@@ -309,6 +309,35 @@ If one goes down, the next picks up automatically. Your app never breaks.
 
 ---
 
+
+## OpenAI-Compatible Mode
+
+Stew now has an OpenAI-compatible endpoint. Any tool built for OpenAI can use Stew instead:
+
+```javascript
+import OpenAI from "openai";
+
+// Point to Stew instead of OpenAI
+const client = new OpenAI({
+  apiKey: "stew_your_api_key_here",
+  baseURL: "https://stew-agent.onrender.com/v1"
+});
+
+const response = await client.chat.completions.create({
+  model: "stew-default",
+  messages: [{ role: "user", content: "Hello!" }]
+});
+console.log(response.choices[0].message.content);
+```
+
+Or set environment variables:
+```bash
+export OPENAI_API_KEY=stew_your_api_key_here
+export OPENAI_BASE_URL=https://stew-agent.onrender.com/v1
+```
+
+This works with Cursor, OpenCode, LangChain, AutoGen, and any tool that supports custom OpenAI base URLs.
+
 ## License
 
 MIT
