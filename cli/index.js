@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 const { parseArgs } = require('./utils/args');
-const { printBanner, printError, red, dim, bold } = require('./utils/output');
+const { printBanner, printError, red, dim, bold, cyan } = require('./utils/output');
 const { getApiKey } = require('./utils/config');
 
 // Command imports
 const { chatCommand } = require('./commands/chat');
+const { codeCommand } = require('./commands/code');
 const { searchCommand } = require('./commands/search');
 const { skillsCommand } = require('./commands/skills');
 const { docCommand } = require('./commands/doc');
@@ -14,6 +15,7 @@ const { statusCommand } = require('./commands/status');
 const { authCommand } = require('./commands/auth');
 
 const COMMANDS = {
+  code: codeCommand,
   chat: chatCommand,
   ask: chatCommand,
   search: searchCommand,
@@ -36,8 +38,9 @@ async function main() {
   const rawArgs = process.argv.slice(2);
 
   if (rawArgs.length === 0) {
-    showHelp();
-    process.exit(0);
+    // No args → launch interactive code agent
+    await codeCommand({ _: [], flags: {}, options: {} });
+    return;
   }
 
   const command = rawArgs[0].toLowerCase();
@@ -49,7 +52,7 @@ async function main() {
   }
 
   if (command === 'version' || command === '--version' || command === '-v') {
-    console.log('stew-ai v1.0.0');
+    console.log('stew-ai v2.0.0');
     process.exit(0);
   }
 
@@ -63,7 +66,7 @@ async function main() {
   const args = parseArgs(restArgs);
 
   // Check for API key on protected commands
-  const protectedCommands = ['chat', 'ask', 'search', 'doc', 'document', 'finetune', 'ft', 'whoami', 'register'];
+  const protectedCommands = ['chat', 'ask', 'search', 'doc', 'document', 'finetune', 'ft', 'whoami', 'register', 'code'];
   if (protectedCommands.includes(command) && command !== 'register') {
     const apiKey = getApiKey();
     if (!apiKey && !process.env.STEW_API_KEY) {
@@ -84,10 +87,14 @@ async function main() {
 function showHelp() {
   printBanner();
   console.log(`${bold('Usage')}: stew <command> [args] [options]\n`);
+  console.log(`${bold('Coding Agent')}:`);
+  console.log(`  ${'code'.padEnd(35)} ${cyan('Interactive AI coding agent (REPL)')}`);
+  console.log(`  ${dim('(or just run "stew" with no command)')}`);
+  console.log('');
   console.log(`${bold('Commands')}:`);
   console.log(`  ${'chat <message>'.padEnd(35)} Chat with S.T.E.W AI`);
   console.log(`  ${'search <query>'.padEnd(35)} Web search with sources`);
-  console.log(`  ${'skills'.padEnd(35)} List all 59 skills`);
+  console.log(`  ${'skills'.padEnd(35)} List all 59+ skills`);
   console.log(`  ${'skills run <name> <params>'.padEnd(35)} Run a specific skill`);
   console.log(`  ${'doc <type> <json_data>'.padEnd(35)} Generate PDF/DOCX/XLSX/PPTX`);
   console.log(`  ${'finetune'.padEnd(35)} View/set persona and instructions`);
@@ -96,6 +103,20 @@ function showHelp() {
   console.log(`  ${'logout'.padEnd(35)} Clear saved API key`);
   console.log(`  ${'whoami'.padEnd(35)} Show current account info`);
   console.log(`  ${'register --name --email --pass'.padEnd(35)} Create a free account\n`);
+  console.log(`${bold('Code Agent Commands')} ${dim('(inside stew code)')}:`);
+  console.log(`  ${'/help'.padEnd(35)} Show in-session commands`);
+  console.log(`  ${'/files [pattern]'.padEnd(35)} List project files`);
+  console.log(`  ${'/read <file>'.padEnd(35)} Read file into context`);
+  console.log(`  ${'/model [name]'.padEnd(35)} Show/set AI model`);
+  console.log(`  ${'/persona [name]'.padEnd(35)} Show/set AI persona`);
+  console.log(`  ${'/web [on|off]'.padEnd(35)} Toggle web search`);
+  console.log(`  ${'/plan [on|off]'.padEnd(35)} Toggle plan mode (read-only)`);
+  console.log(`  ${'/run <cmd>'.padEnd(35)} Execute shell command`);
+  console.log(`  ${'/git status|diff|log|commit'.padEnd(35)} Git operations`);
+  console.log(`  ${'/save <name> / /load <name>'.padEnd(35)} Save/load sessions`);
+  console.log(`  ${'/undo'.padEnd(35)} Undo last file change`);
+  console.log(`  ${'/clear'.padEnd(35)} Clear conversation`);
+  console.log(`  ${'/exit'.padEnd(35)} Exit\n`);
   console.log(`${bold('Options')}:`);
   console.log(`  ${'--json'.padEnd(20)} Output as JSON`);
   console.log(`  ${'--raw'.padEnd(20)} Raw text output (for scripts)`);
@@ -104,6 +125,8 @@ function showHelp() {
   console.log(`  ${'--output <file>'.padEnd(20)} Save output to file`);
   console.log(`  ${'--category <name>'.padEnd(20)} Filter skills by category\n`);
   console.log(`${bold('Examples')}:`);
+  console.log(`  ${dim('stew  (launches interactive coding agent)')}`);
+  console.log(`  ${dim('stew code  (explicit launch)')}`);
   console.log(`  ${dim('stew chat "What is the capital of Nigeria?"')}`);
   console.log(`  ${dim('stew chat "latest news in Lagos" --web')}`);
   console.log(`  ${dim('stew search "top Nigerian fintechs 2026" --json')}`);

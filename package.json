@@ -1,7 +1,7 @@
 {
   "name": "stew-ai",
-  "version": "1.0.0",
-  "description": "Africa's #1 AI Agent API — 60+ skills, web research, document generation, code execution, and 12 domain personas. Zero dependencies.",
+  "version": "2.0.0",
+  "description": "Africa's #1 AI Agent API & Code Agent — 60+ skills, web research, document generation, code execution, interactive REPL coding agent, and 12 domain personas. Zero dependencies.",
   "main": "index.js",
   "bin": {
     "stew": "./cli/index.js"
@@ -16,7 +16,9 @@
   "keywords": [
     "ai", "agent", "stew", "api", "africa", "nigeria", "chatbot",
     "web-search", "document-generation", "code-execution", "ocr",
-    "mistral", "groq", "nvidia", "openrouter", "huggingface"
+    "mistral", "groq", "nvidia", "openrouter", "huggingface",
+    "code-agent", "cli", "repl", "coding-assistant", "terminal",
+    "claude-code", "opencode", "kilo-code", "ai-coding"
   ],
   "author": "MUTYINT Nigeria",
   "license": "MIT",

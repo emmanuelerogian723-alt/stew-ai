@@ -1,350 +1,279 @@
-# stew-ai 🥘
+# 🍲 stew-ai
 
-**Africa's #1 AI Agent API** — 60+ skills, web research, document generation, code execution, OCR, and a 100-agent swarm. Zero dependencies.
+**Africa's #1 AI Agent API & Code Agent** — 60+ skills, web research, document generation, code execution, interactive REPL coding agent, and 12 domain personas. Zero dependencies.
 
-[![npm version](https://img.shields.io/npm/v/stew-ai)](https://www.npmjs.com/package/stew-ai)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Built in Nigeria](https://img.shields.io/badge/built%20in-Nigeria-%23009739)](https://stew-agent.onrender.com)
+[![npm version](https://img.shields.io/badge/version-2.0.0-blue)](https://www.npmjs.com/package/stew-ai)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
-> **S.T.E.W** = **S**mart **T**ask **E**xecution **W**orker
+## What's New in v2.0
 
-One SDK. Every skill your app needs. Chat with 6 AI providers (automatic failover), search the web, generate PDF/DOCX/XLSX/PPTX, run Python code, OCR images, and spawn 100 AI agents — all from a single SDK.
+**Interactive Code Agent** — a full-featured AI coding agent in your terminal that competes with Claude Code, OpenCode, and Kilo Code:
 
-🌐 **Live API**: https://stew-agent.onrender.com · 📚 **Docs**: https://stew-agent.onrender.com/docs
-
----
+- 🧠 Interactive REPL with streaming responses
+- 📁 Project context awareness (auto-detects project type, structure, config files)
+- 📝 File operations — read, write, edit with undo
+- 🖥️ Shell command execution
+- 🔀 Git integration (status, diff, log, commit)
+- 💾 Session persistence (save/load conversations)
+- 🌐 Web search toggle (search the web mid-conversation)
+- 📋 Plan mode (review changes before applying)
+- 🎨 Syntax highlighting for code blocks
+- ⚡ Real-time SSE streaming from the Stew API
+- 🔗 `@file` references to include files in your prompt
+- 🎭 12 AI personas (developer, doctor, lawyer, etc.)
+- 🤖 9 AI models (Groq, Mistral, NVIDIA, OpenRouter, HuggingFace, OpenAI)
+- 📦 Zero dependencies — pure Node.js 18+ native fetch
 
 ## Install
-
-```bash
-npm install stew-ai
-```
-
-Or install globally for CLI access:
 
 ```bash
 npm install -g stew-ai
 ```
 
----
+## Quick Start
 
-## Quick Start (3 lines)
-
-```js
-const Stew = require('stew-ai');
-const stew = new Stew({ apiKey: 'stew_your_key_here' });
-const res = await stew.chat.send('Hello from Africa!');
-console.log(res.response);
-```
-
-Get a free API key at https://stew-agent.onrender.com — no credit card needed.
-
----
-
-## CLI Usage
+### Interactive Code Agent
 
 ```bash
-# Save your API key
-stew login stew_your_api_key_here
+# Navigate to your project
+cd /path/to/your/project
 
+# Launch the code agent
+stew
+# or explicitly
+stew code
+```
+
+Then start chatting with full project context:
+
+```
+stew> Read @package.json and suggest improvements
+stew> Create a new Express API route for user authentication
+stew> Explain how the authentication works in this project
+stew> /files **/*.ts
+stew> /model stew-fast
+stew> /web on
+stew> What are the latest best practices for JWT auth?
+stew> /exit
+```
+
+### One-Shot Commands
+
+```bash
 # Chat
 stew chat "What is the capital of Nigeria?"
-stew chat "Latest news in Lagos" --web
-stew chat "Write a poem" --json
 
-# Search
-stew search "top Nigerian fintechs 2026"
+# Chat with web search
+stew chat "latest news in Lagos" --web
 
-# Skills
-stew skills
-stew skills run generate_cv '{"name":"Emmanuel","role":"Developer"}'
+# Web search with sources
+stew search "top Nigerian fintechs 2026" --json
 
-# Documents
-stew doc pdf '{"title":"Report","content":"Hello"}' --output report.pdf
+# List skills
+stew skills --category finance
 
-# Fine-tune
-stew finetune --persona doctor --instructions "Always cite NHS guidelines"
+# Generate documents
+stew doc pdf '{"title":"Report","content":"Hello world"}' --output report.pdf
 
-# Status
+# Check API status
 stew status
-
-# Piping
-cat file.txt | stew chat "Summarize this"
 ```
 
----
+## Code Agent Commands
 
-## SDK Methods
+Inside `stew code` (or just `stew`), use these slash commands:
 
-### Chat
+| Command | Description |
+|---------|-------------|
+| `/help` | Show all available commands |
+| `/files [pattern]` | List project files (e.g. `/files **/*.ts`) |
+| `/read <file>` | Read a file into conversation context |
+| `/clear` | Clear conversation history |
+| `/model [name]` | Show or set AI model |
+| `/persona [name]` | Show or set AI persona |
+| `/web [on\|off]` | Toggle web search |
+| `/plan [on\|off]` | Toggle plan mode (read-only, no file changes) |
+| `/save <name>` | Save current session |
+| `/load <name>` | Load a saved session |
+| `/sessions` | List saved sessions |
+| `/git status` | Git status |
+| `/git diff` | Git diff |
+| `/git log` | Git commit log |
+| `/git commit <msg>` | Stage all + commit |
+| `/run <cmd>` | Execute a shell command |
+| `/undo` | Undo last file change |
+| `/diff <file>` | Show diff of a file |
+| `/status` | Show current Stew Code state |
+| `/exit` | Exit |
 
-```js
-const stew = new Stew({ apiKey: 'stew_xxx' });
+### Multi-line Input
 
-// Basic chat
-const res = await stew.chat.send('What is 2+2?');
+Type ```` ``` ```` or `---` to enter multi-line mode. Type it again to finish:
 
-// Chat with web search
-const res = await stew.chat.send('Latest news in Nigeria?', { webSearch: true });
-
-// Chat with persona (requires fine-tuning)
-await stew.finetune.set({ persona: 'doctor' });
-const res = await stew.chat.send('What are malaria symptoms?');
+```
+stew> ```
+... function processPayment(amount) {
+...   // complex logic here
+...   return result;
+... }
+... ```
 ```
 
-### Web Search
+### `@file` References
 
-```js
-// Search the web
-const results = await stew.search.query('top Nigerian startups 2026');
+Include files in your prompt with `@filepath`:
 
-// Browse a URL
-const page = await stew.search.browse('https://example.com', {
-  question: 'What does this company do?'
+```
+stew> Read @src/index.js and @src/utils.js — explain the architecture
+stew> Compare @lib/old.js with @lib/new.js
+stew> Fix the bug in @src/handler.ts
+```
+
+### Plan Mode
+
+When plan mode is on, Stew analyzes your project and suggests changes but doesn't apply them. Perfect for reviewing before committing:
+
+```
+stew> /plan on
+✅ Plan mode ON
+stew> Refactor the authentication to use JWT
+(stew explains what it would change, no files modified)
+stew> /plan off
+✅ Plan mode OFF — changes will auto-apply
+stew> Go ahead and make those changes
+(changes applied automatically)
+```
+
+## SDK Usage
+
+```javascript
+const Stew = require('stew-ai');
+
+const stew = new Stew({ apiKey: 'your_api_key' });
+
+// Chat
+const response = await stew.chat.send('Hello!');
+console.log(response.response);
+
+// Streaming chat
+await stew.chat.stream('Write a poem about Lagos', {
+  onToken: (delta) => process.stdout.write(delta),
 });
-```
 
-### Skills (59 available)
+// OpenAI-compatible completion
+const result = await stew.chat.completion([
+  { role: 'system', content: 'You are a helpful assistant.' },
+  { role: 'user', content: 'What is 2+2?' }
+]);
 
-```js
-// List all skills
+// Web search
+const search = await stew.search.query('Nigerian tech startups 2026');
+
+// Generate documents
+const pdf = await stew.documents.pdf('# Report\n\nHello world', 'My Report');
+
+// List skills
 const skills = await stew.skills.list();
-const financeSkills = await stew.skills.list('finance');
 
 // Run a skill
 const cv = await stew.skills.run('generate_cv', {
-  name: 'Emmanuel Erog',
-  role: 'AI Engineer'
+  name: 'Emmanuel',
+  role: 'Developer'
 });
 
-const weather = await stew.skills.run('weather', { city: 'Lagos' });
-const rates = await stew.skills.run('currency_rates', { base: 'NGN', target: 'USD' });
+// Generate images
+const img = await stew.generateImage('A lion walking through Lagos');
+
+// Execute code
+const result = await stew.executeCode('print("Hello from Stew!")');
+
+// Run agent swarm
+const agents = await stew.runAgents('Research top 10 African startups', { numAgents: 5 });
 ```
 
-### Document Generation
+## Available Models
 
-```js
-// PDF
-await stew.documents.pdf('Content here', 'My Report');
+| Model | Description |
+|-------|-------------|
+| `stew-default` | Auto-select best model (recommended) |
+| `stew-fast` | Groq — fastest inference |
+| `stew-mistral` | Mistral Large |
+| `stew-nvidia` | NVIDIA NIM |
+| `stew-openrouter` | OpenRouter (multi-model) |
+| `stew-hf` | HuggingFace |
+| `stew-openai` | OpenAI GPT-4o |
+| `gpt-4o` | GPT-4o |
+| `gpt-4o-mini` | GPT-4o mini (cheapest) |
 
-// Word document
-await stew.documents.docx('Content here', 'My Document');
+## Personas
 
-// Excel spreadsheet
-await stew.documents.xlsx([
-  { name: 'Emmanuel', role: 'Developer' },
-  { name: 'Jane', role: 'Designer' }
-], 'Team', 'Staff Sheet');
+`default` · `business` · `doctor` · `lawyer` · `teacher` · `developer` · `therapist` · `coach` · `nutritionist` · `financial_advisor` · `researcher` · `creative`
 
-// PowerPoint
-await stew.documents.pptx([
-  { title: 'Q3 Results', content: 'Revenue up 40%' }
-], 'Quarterly Report');
+## Project Configuration
 
-// HTML report
-await stew.documents.html('<h1>Hello</h1>', 'My Report');
+Create a `STEW.md` or `.stew/rules` file in your project root to give Stew custom instructions:
+
+```markdown
+# Project Rules
+
+- Use TypeScript strict mode
+- Follow the Airbnb ESLint config
+- All API endpoints must have input validation
+- Use camelCase for variables, PascalCase for types
 ```
-
-### Fine-Tune (12 personas)
-
-```js
-// Set persona
-await stew.finetune.set({
-  persona: 'doctor',          // general|doctor|health|startup|legal|finance|education|ecommerce|developer|marketing|hr|customer_support
-  customInstructions: 'Always cite NHS guidelines',
-  responseStyle: 'detailed',  // concise|balanced|detailed
-  language: 'en'              // en|pidgin|yoruba|igbo|hausa|fr
-});
-
-// Get current settings
-const settings = await stew.finetune.get();
-```
-
-### 100-Agent Swarm
-
-```js
-// Spawn multiple agents for complex tasks
-const result = await stew.runAgents(
-  'Research the top 10 AI startups in Africa and create a summary report',
-  { numAgents: 5, synthesize: true }
-);
-```
-
-### Code Execution
-
-```js
-// Run Python code in a safe sandbox
-const result = await stew.executeCode(
-  'import numpy as np\nprint(np.array([1,2,3]).mean())'
-);
-```
-
-### Image Generation
-
-```js
-const result = await stew.generateImage('A futuristic African city');
-```
-
-### OCR
-
-```js
-const result = await stew.ocr(base64ImageData, {
-  languages: ['eng', 'fra']
-});
-```
-
-### System
-
-```js
-// Health check
-const health = await stew.heartbeat();
-
-// Account usage
-const usage = await stew.usage();
-```
-
----
 
 ## Authentication
 
-Three ways to provide your API key:
+Get a free API key at [https://stew-agent.onrender.com](https://stew-agent.onrender.com):
 
-```js
-// 1. Constructor
-const stew = new Stew({ apiKey: 'stew_xxx' });
-
-// 2. Environment variable
-process.env.STEW_API_KEY = 'stew_xxx';
-const stew = new Stew({});
-
-// 3. CLI config (saved with `stew login`)
-// CLI reads from ~/.stew/config.json automatically
-```
-
----
-
-## Error Handling
-
-```js
-const { StewError } = require('stew-ai');
-
-try {
-  const res = await stew.chat.send('Hello');
-} catch (err) {
-  if (err instanceof StewError) {
-    console.log(err.code);       // AUTH_ERROR | RATE_LIMIT | SERVER_ERROR | NETWORK_ERROR
-    console.log(err.message);    // Human-readable message
-    console.log(err.suggestion); // What to do about it
-  }
-}
-```
-
-| Code | Meaning |
-|---|---|
-| `AUTH_ERROR` | Invalid or missing API key |
-| `RATE_LIMIT` | Monthly call limit reached — upgrade your plan |
-| `SERVER_ERROR` | API is down or waking up (free tier sleeps) |
-| `NETWORK_ERROR` | Cannot reach the API |
-| `BAD_REQUEST` | Malformed request |
-
----
-
-## Migration from OpenAI SDK
-
-```js
-// OpenAI
-const OpenAI = require('openai');
-const openai = new OpenAI({ apiKey: 'sk-xxx' });
-const res = await openai.chat.completions.create({
-  model: 'gpt-4o-mini',
-  messages: [{ role: 'user', content: 'Hello' }]
-});
-console.log(res.choices[0].message.content);
-
-// S.T.E.W (simpler, more features, Naira billing)
-const Stew = require('stew-ai');
-const stew = new Stew({ apiKey: 'stew_xxx' });
-const res = await stew.chat.send('Hello');
-console.log(res.response);
-```
-
----
-
-## AI Providers (6 with auto-failover)
-
-| Provider | Model | Role |
-|---|---|---|
-| Groq | gpt-oss-120b | Primary (ultra-fast) |
-| Mistral AI | mistral-large-latest | Secondary |
-| NVIDIA NIM | llama-3.3-70b | Tertiary (free) |
-| OpenRouter | llama-3.3-70b:free | Quaternary |
-| HuggingFace | Qwen3-235B | Fallback |
-| OpenAI | gpt-4o-mini | Emergency |
-
-If one goes down, the next picks up automatically. Your app never breaks.
-
----
-
-## Pricing (Naira billing, no dollar card)
-
-| Plan | Price | Calls/month |
-|---|---|---|
-| Free | ₦0 | 1,500 |
-| Pro | ₦9,900/mo (~$6) | 10,000 |
-| Business | ₦29,000/mo (~$18) | 100,000 |
-| Enterprise | ₦49k+/mo | Unlimited |
-
----
-
-## Why stew-ai?
-
-1. **Zero dependencies** — installs instantly, never breaks from dependency updates
-2. **6 AI providers** — automatic failover means 99.9% uptime
-3. **59 skills** — web search, document gen, code exec, OCR, and more
-4. **100-agent swarm** — complex multi-step tasks in parallel
-5. **Naira billing** — Paystack-powered, no dollar card needed
-6. **12 personas** — fine-tune for medical, legal, finance, startup, and more
-7. **African-first** — Pidgin, Yoruba, Igbo, Hausa language support
-8. **Free tier** — 1,500 calls/month, no credit card
-
----
-
-
-## OpenAI-Compatible Mode
-
-Stew now has an OpenAI-compatible endpoint. Any tool built for OpenAI can use Stew instead:
-
-```javascript
-import OpenAI from "openai";
-
-// Point to Stew instead of OpenAI
-const client = new OpenAI({
-  apiKey: "stew_your_api_key_here",
-  baseURL: "https://stew-agent.onrender.com/v1"
-});
-
-const response = await client.chat.completions.create({
-  model: "stew-default",
-  messages: [{ role: "user", content: "Hello!" }]
-});
-console.log(response.choices[0].message.content);
-```
-
-Or set environment variables:
 ```bash
-export OPENAI_API_KEY=stew_your_api_key_here
-export OPENAI_BASE_URL=https://stew-agent.onrender.com/v1
+stew login your_api_key_here
 ```
 
-This works with Cursor, OpenCode, LangChain, AutoGen, and any tool that supports custom OpenAI base URLs.
+Free tier: 1,500 API calls/month. No credit card required.
+
+## Piping & Scripting
+
+```bash
+# Pipe content into Stew
+cat error.log | stew chat "What's causing this error?"
+
+# Use in scripts
+echo $(stew chat "Generate a git commit message for: added login page" --raw)
+
+# JSON output for programmatic use
+stew search "Nigerian GDP 2026" --json | jq '.results[0]'
+```
+
+## Comparison with Other Code Agents
+
+| Feature | Stew Code | Claude Code | OpenCode | Kilo Code |
+|---------|-----------|-------------|----------|-----------|
+| Price | Free tier | $20/mo | Free (BYOK) | Free (BYOK) |
+| Dependencies | Zero | TypeScript | Go | TypeScript |
+| Models | 9 models | Claude only | 75+ models | 500+ models |
+| Streaming | ✅ SSE | ✅ | ✅ | ✅ |
+| File ops | ✅ | ✅ | ✅ | ✅ |
+| Git integration | ✅ | ✅ | ✅ | ✅ |
+| Shell execution | ✅ | ✅ | ✅ | ✅ |
+| Session persistence | ✅ | ✅ | ✅ SQLite | ✅ |
+| Plan mode | ✅ | ✅ | ✅ | ✅ |
+| Undo | ✅ | ✅ | ✅ | ✅ |
+| @file refs | ✅ | ✅ | ✅ | ✅ |
+| Web search | ✅ Built-in | ❌ | ❌ | ❌ |
+| Personas | ✅ 12 | ❌ | ❌ | ❌ |
+| Document gen | ✅ PDF/DOCX | ❌ | ❌ | ❌ |
+| Image gen | ✅ | ❌ | ❌ | ❌ |
+| Africa-focused | ✅ | ❌ | ❌ | ❌ |
 
 ## License
 
-MIT
+MIT © MUTYINT Nigeria
 
----
+## Links
 
-<p align="center">
-  🇳🇬 Built by Africans, for Africans.<br>
-  <a href="https://stew-agent.onrender.com">stew-agent.onrender.com</a>
-</p>
+- API Docs: https://stew-agent.onrender.com/docs
+- Get a free key: https://stew-agent.onrender.com
+- GitHub: https://github.com/emmanuelerogian723-alt/Stew-agent
+- Telegram: @StewAgent_bot
