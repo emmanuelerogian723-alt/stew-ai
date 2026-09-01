@@ -1,31 +1,34 @@
 {
   "name": "stew-ai",
   "version": "2.0.0",
-  "description": "Africa's #1 AI Agent API & Code Agent — 60+ skills, web research, document generation, code execution, interactive REPL coding agent, and 12 domain personas. Zero dependencies.",
+  "description": "Stew Code — The Ultimate Terminal Coding Agent. Skill Forge, autonomous agent mode, 16+ built-in skills, 9 AI models, 12 personas, streaming REPL, file ops, git, sessions. Zero dependencies.",
   "main": "index.js",
   "bin": {
     "stew": "./cli/index.js"
   },
   "types": "types/index.d.ts",
   "scripts": {
-    "test": "node -e \"const S=require('./index.js'); console.log('Stew SDK loaded:', Object.keys(new S({apiKey:'test'})))\""
+    "test": "node -e \"const S=require('./index.js'); console.log('Stew Code loaded:', Object.keys(new S({apiKey:'test'})))\""
   },
   "engines": {
     "node": ">=18"
   },
   "keywords": [
-    "ai", "agent", "stew", "api", "africa", "nigeria", "chatbot",
-    "web-search", "document-generation", "code-execution", "ocr",
+    "ai", "agent", "stew", "stew-code", "code-agent", "coding-agent",
+    "cli", "terminal", "repl", "africa", "nigeria",
+    "claude-code", "opencode", "kilo-code", "glama",
+    "skill-forge", "autonomous-agent", "code-generation",
+    "web-search", "document-generation", "code-execution",
     "mistral", "groq", "nvidia", "openrouter", "huggingface",
-    "code-agent", "cli", "repl", "coding-assistant", "terminal",
-    "claude-code", "opencode", "kilo-code", "ai-coding"
+    "scaffolding", "testing", "docker", "ci-cd", "security-audit",
+    "refactoring", "developer-tools", "devtools"
   ],
   "author": "MUTYINT Nigeria",
   "license": "MIT",
   "homepage": "https://stew-agent.onrender.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/emmanuelerogian723-alt/Stew-agent"
+    "url": "https://github.com/emmanuelerogian723-alt/stew-ai"
   },
   "files": [
     "index.js",

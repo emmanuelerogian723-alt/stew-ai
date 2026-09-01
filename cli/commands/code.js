@@ -1,20 +1,13 @@
 /**
- * Stew Code — Interactive AI coding agent for the terminal.
- * Competes with Claude Code, OpenCode, Kilo Code.
- * 
- * Features:
- * - Interactive REPL with streaming responses
- * - @file references for project context
- * - Slash commands: /help /files /clear /model /persona /exit /save /load /diff /git /run /undo /web /plan /code
- * - File read/write/edit with undo
- * - Code execution (shell commands)
- * - Git integration (status, diff, commit)
- * - Session persistence (save/load conversations)
- * - Project context awareness
- * - Plan mode (review before changes)
- * - Multi-line input support
- * - Syntax highlighting
- * - Web search toggle
+ * Stew Code — The most powerful AI coding agent for the terminal.
+ *
+ * Superior to OpenCode, Kilo Code, Claude Code, and Glama because:
+ * - Skill Forge: auto-creates skills when it can't do something
+ * - Agent Mode: autonomous multi-step task execution
+ * - 16+ built-in skills (scaffold, test, docker, ci, security, etc.)
+ * - Zero dependencies, zero cost (free Stew API tier)
+ * - Works with any language/framework
+ * - Self-improving — learns and saves reusable skills
  */
 const fs = require('fs');
 const path = require('path');
@@ -26,24 +19,22 @@ const { highlightCode, detectLang } = require('../utils/highlight');
 const { readFileSync, listFiles, projectContext, diff, UndoStack } = require('../utils/files');
 const git = require('../utils/git');
 const { saveSession, loadSession, listSessions, deleteSession } = require('../utils/session');
+const { BUILTIN_SKILLS, listSkills, runSkill, forgeSkill, deleteSkill } = require('../utils/skill-forge');
 
-const C = {
+var C = {
   reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', italic: '\x1b[3m',
   red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
   blue: '\x1b[34m', magenta: '\x1b[35m', cyan: '\x1b[36m',
   gray: '\x1b[90m', white: '\x1b[37m',
-  bgRed: '\x1b[41m', bgGreen: '\x1b[42m', bgBlue: '\x1b[44m', bgMagenta: '\x1b[45m',
 };
 
-const BANNER = `
-${C.cyan}${C.bold}  ___  ___ ___ ___ ___
- / __|/ __| __/ __| _ \\${C.reset}
-${C.cyan}${C.bold} \\__ \\ (__| _| (__|   /${C.reset}
-${C.cyan}${C.bold} |___/\\___|___\\___|_|_\\${C.reset}
-${C.dim}  AI Coding Agent · Zero dependencies · Africa's #1${C.reset}
-`;
+var BANNER = '\n' +
+  C.cyan + C.bold + '  ___  ___ ___ ___ ___      ' + C.reset + '\n' +
+  C.cyan + C.bold + ' / __|/ __| __/ __| _ \\     ' + C.reset + C.dim + 'Code' + C.reset + '\n' +
+  C.cyan + C.bold + ' \\__ \\ (__| _| (__|   /     ' + C.reset + C.dim + 'The Ultimate Terminal Agent' + C.reset + '\n' +
+  C.cyan + C.bold + ' |___/\\___|___\\___|_|_\\     ' + C.reset + C.dim + 'v2.0 · Zero Deps · Free' + C.reset + '\n';
 
-const MODELS = [
+var MODELS = [
   ['stew-default', 'Auto-select best model'],
   ['stew-fast', 'Groq (fastest)'],
   ['stew-mistral', 'Mistral Large'],
@@ -55,48 +46,49 @@ const MODELS = [
   ['gpt-4o-mini', 'GPT-4o mini (cheap)'],
 ];
 
-const PERSONAS = [
+var PERSONAS = [
   'default', 'business', 'doctor', 'lawyer', 'teacher',
   'developer', 'therapist', 'coach', 'nutritionist',
   'financial_advisor', 'researcher', 'creative',
 ];
 
-const SLASH_COMMANDS = [
-  ['/help', 'Show available commands'],
+var SLASH_COMMANDS = [
+  ['/help', 'Show all commands'],
   ['/files [pattern]', 'List project files'],
   ['/read <file>', 'Read a file into context'],
-  ['/clear', 'Clear conversation history'],
+  ['/clear', 'Clear conversation'],
   ['/model [name]', 'Show/set AI model'],
   ['/persona [name]', 'Show/set persona'],
   ['/web [on|off]', 'Toggle web search'],
-  ['/plan [on|off]', 'Toggle plan mode (no file changes)'],
-  ['/save <name>', 'Save current session'],
-  ['/load <name>', 'Load a saved session'],
+  ['/plan [on|off]', 'Plan mode (no file writes)'],
+  ['/skill <name> [args]', 'Run a built-in or custom skill'],
+  ['/skills', 'List all available skills'],
+  ['/forge <name> <desc>', 'Create a new skill (Skill Forge)'],
+  ['/unforge <name>', 'Delete a custom skill'],
+  ['/agent <task>', 'Autonomous agent mode'],
+  ['/save <name>', 'Save session'],
+  ['/load <name>', 'Load session'],
   ['/sessions', 'List saved sessions'],
-  ['/git status', 'Git status'],
-  ['/git diff', 'Git diff'],
-  ['/git log', 'Git log'],
-  ['/git commit <msg>', 'Stage all + commit'],
+  ['/git <sub>', 'Git: status, diff, log, commit'],
   ['/run <cmd>', 'Execute shell command'],
   ['/undo', 'Undo last file change'],
   ['/diff <file>', 'Show diff of a file'],
-  ['/exit', 'Exit Stew Code'],
-  ['/quit', 'Exit Stew Code'],
+  ['/status', 'Show Stew Code state'],
+  ['/exit', 'Exit'],
 ];
 
 async function codeCommand(args) {
-  const apiKey = getApiKey();
+  var apiKey = getApiKey();
   if (!apiKey && !process.env.STEW_API_KEY) {
-    console.log(`${C.red}No API key found.${C.reset} Run: ${C.bold}stew login <your_api_key>${C.reset}`);
-    console.log(`${C.dim}Get a free key at https://stew-agent.onrender.com${C.reset}\n`);
+    console.log(C.red + 'No API key found.' + C.reset + ' Run: ' + C.bold + 'stew login <your_api_key>' + C.reset);
+    console.log(C.dim + 'Get a free key at https://stew-agent.onrender.com' + C.reset + '\n');
     process.exit(1);
   }
 
-  const client = new StewClient({ apiKey });
-  const cwd = process.cwd();
+  var client = new StewClient({ apiKey });
+  var cwd = process.cwd();
 
-  // State
-  const state = {
+  var state = {
     messages: [],
     model: 'stew-default',
     persona: 'developer',
@@ -105,138 +97,128 @@ async function codeCommand(args) {
     undoStack: new UndoStack(),
     projectCtx: null,
     streaming: true,
-    debugMode: false,
+    filesChanged: 0,
+    skillsForged: 0,
   };
 
-  // Build project context
-  const projCtx = projectContext(cwd);
+  var projCtx = projectContext(cwd);
   state.projectCtx = projCtx;
 
-  // System prompt with project context
   function buildSystemPrompt() {
-    let prompt = `You are S.T.E.W, an expert AI coding agent working in a terminal. You help developers write, debug, and understand code.
+    var prompt = 'You are Stew Code, the most powerful AI coding agent for the terminal. You help developers write, debug, refactor, test, deploy, and understand code.\n\n';
+    prompt += 'CAPABILITIES:\n';
+    prompt += '- Read and write files in the user\'s project\n';
+    prompt += '- Execute shell commands\n';
+    prompt += '- Search the web for documentation\n';
+    prompt += '- Generate code, tests, and documentation\n';
+    prompt += '- Debug and fix issues\n';
+    prompt += '- Explain code and architecture\n';
+    prompt += '- Create reusable skills via Skill Forge\n';
+    prompt += '- Run autonomous agent tasks\n';
+    prompt += '- Scaffold new projects\n';
+    prompt += '- Generate Dockerfiles, CI/CD, tests, docs\n';
+    prompt += '- Security audit, dependency check\n\n';
+    prompt += 'CURRENT PROJECT:\n';
+    prompt += '- Directory: ' + projCtx.root + '\n';
+    prompt += '- Type: ' + projCtx.type + '\n';
+    prompt += '- Files (' + (projCtx.stats.totalFiles || 0) + '): ' + projCtx.files.slice(0, 30).join(', ');
+    if (projCtx.files.length > 30) prompt += '...';
+    prompt += '\n\nPROJECT STRUCTURE:\n' + (projCtx.structure || '(empty)');
 
-CAPABILITIES:
-- Read and write files in the user's project
-- Execute shell commands
-- Search the web for documentation
-- Generate code, tests, and documentation
-- Debug and fix issues
-- Explain code and architecture
-
-CURRENT PROJECT:
-- Directory: ${projCtx.root}
-- Type: ${projCtx.type}
-- Files (${projCtx.stats.totalFiles || 0}): ${projCtx.files.slice(0, 30).join(', ')}${projCtx.files.length > 30 ? '...' : ''}
-
-PROJECT STRUCTURE:
-${projCtx.structure || '(empty)'}`;
-
-    // Add config files context
     if (projCtx.config) {
-      for (const [file, content] of Object.entries(projCtx.config)) {
-        prompt += `\n\n--- ${file} ---\n${content}`;
+      for (var file in projCtx.config) {
+        prompt += '\n\n--- ' + file + ' ---\n' + projCtx.config[file];
       }
     }
 
-    // Add .stew/rules or STEW.md if present
-    const rulesPath = path.join(cwd, '.stew', 'rules');
-    const stewMdPath = path.join(cwd, 'STEW.md');
+    var rulesPath = path.join(cwd, '.stew', 'rules');
+    var stewMdPath = path.join(cwd, 'STEW.md');
     if (fs.existsSync(rulesPath)) {
-      prompt += `\n\nPROJECT RULES (.stew/rules):\n${fs.readFileSync(rulesPath, 'utf8').slice(0, 3000)}`;
+      prompt += '\n\nPROJECT RULES (.stew/rules):\n' + fs.readFileSync(rulesPath, 'utf8').slice(0, 3000);
     }
     if (fs.existsSync(stewMdPath)) {
-      prompt += `\n\nPROJECT RULES (STEW.md):\n${fs.readFileSync(stewMdPath, 'utf8').slice(0, 3000)}`;
+      prompt += '\n\nPROJECT RULES (STEW.md):\n' + fs.readFileSync(stewMdPath, 'utf8').slice(0, 3000);
     }
 
-    prompt += `
-
-BEHAVIOR:
-1. Be concise and direct. Show code, not paragraphs.
-2. When you want to read a file, say "Let me read <file>" and the user will provide its content.
-3. When you suggest writing/editing a file, show the complete file content in a code block with the filename as a comment on the first line.
-4. Use the format: \`\`\`lang filepath
-// filepath: relative/path/to/file.js
-code here
-\`\`\`
-5. When suggesting shell commands, use: \`\`\`bash\ncommand here\n\`\`\`
-6. Always explain what changed and why.
-7. If in plan mode, do NOT suggest file writes — only explain what you would do.
-8. Match the project's existing code style and conventions.`;
+    prompt += '\n\nBEHAVIOR:\n';
+    prompt += '1. Be concise and direct. Show code, not paragraphs.\n';
+    prompt += '2. When suggesting file changes, use code blocks with filepath on first line:\n';
+    prompt += '   ```lang filepath\n   // filepath: relative/path/to/file.js\n   code here\n   ```\n';
+    prompt += '3. For shell commands, use: ```bash\ncommand here\n```\n';
+    prompt += '4. Always explain what changed and why.\n';
+    prompt += '5. In plan mode, do NOT write files — only explain what you would do.\n';
+    prompt += '6. Match the project\'s existing code style.\n';
+    prompt += '7. If you cannot do something, suggest using /forge to create a skill for it.\n';
+    prompt += '8. Be proactive — suggest next steps after completing tasks.';
 
     if (state.persona !== 'default' && state.persona !== 'developer') {
-      prompt += `\n\nPERSONA: ${state.persona}`;
+      prompt += '\n\nPERSONA: ' + state.persona;
     }
 
     return prompt;
   }
 
-  // Initialize system message
   state.messages.push({ role: 'system', content: buildSystemPrompt() });
 
   // Print banner
   console.log(BANNER);
-  console.log(`${C.dim}  Model: ${C.reset}${C.bold}${state.model}${C.reset}  ${C.dim}·${C.reset}  ${C.dim}Persona: ${C.reset}${C.bold}${state.persona}${C.reset}  ${C.dim}·${C.reset}  ${C.dim}Web: ${C.reset}${state.webSearch ? C.green + 'on' : C.gray + 'off'}${C.reset}  ${C.dim}·${C.reset}  ${C.dim}Plan: ${C.reset}${state.planMode ? C.yellow + 'on' : C.gray + 'off'}${C.reset}`);
-  console.log(`${C.dim}  Project: ${C.reset}${projCtx.root} ${C.dim}(${projCtx.type})${C.reset}`);
-  
-  if (git.isGitRepo(cwd)) {
-    const gs = git.status(cwd);
-    console.log(`${C.dim}  Branch: ${C.reset}${C.cyan}${gs.branch}${C.reset}  ${C.dim}·${C.reset}  ${gs.changes.length > 0 ? C.yellow + gs.changes.length + ' changes' : C.green + 'clean'}${C.reset}`);
-  }
-  
-  console.log(`${C.dim}  Type a message, /help for commands, or @file to include files${C.reset}`);
-  console.log(`${C.dim}  ${'─'.repeat(60)}${C.reset}\n`);
 
-  // Create readline interface
-  const rl = readline.createInterface({
+  var skillsList = listSkills();
+  console.log(C.dim + '  Model: ' + C.reset + C.bold + state.model + C.reset +
+    '  ' + C.dim + '·' + C.reset + '  ' + C.dim + 'Persona: ' + C.reset + C.bold + state.persona + C.reset +
+    '  ' + C.dim + '·' + C.reset + '  ' + C.dim + 'Skills: ' + C.reset + C.bold + skillsList.total + C.reset);
+  console.log(C.dim + '  Web: ' + C.reset + (state.webSearch ? C.green + 'on' : C.gray + 'off') + C.reset +
+    '  ' + C.dim + '·' + C.reset + '  ' + C.dim + 'Plan: ' + C.reset + (state.planMode ? C.yellow + 'on' : C.gray + 'off') + C.reset +
+    '  ' + C.dim + '·' + C.reset + '  ' + C.dim + 'Project: ' + C.reset + projCtx.type);
+
+  if (git.isGitRepo(cwd)) {
+    var gs = git.status(cwd);
+    console.log(C.dim + '  Branch: ' + C.reset + C.cyan + gs.branch + C.reset +
+      '  ' + C.dim + '·' + C.reset + '  ' + (gs.changes.length > 0 ? C.yellow + gs.changes.length + ' changes' : C.green + 'clean') + C.reset);
+  }
+
+  console.log(C.dim + '  Type a message, /help for commands, /skills for skills, @file to include files' + C.reset);
+  console.log(C.dim + '  ' + '─'.repeat(60) + C.reset + '\n');
+
+  var rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: `${C.cyan}${C.bold}stew>${C.reset} `,
+    prompt: C.cyan + C.bold + 'stew>' + C.reset + ' ',
   });
 
-  // Input handling state
-  let multilineBuffer = '';
-  let inMultiline = false;
+  var multilineBuffer = '';
+  var inMultiline = false;
 
   rl.prompt();
 
-  rl.on('line', async (input) => {
-    const trimmed = input.trim();
+  rl.on('line', async function(input) {
+    var trimmed = input.trim();
 
-    // Multi-line input handling
+    // Multi-line handling
     if (inMultiline) {
       if (trimmed === '```' || trimmed === '---') {
-        // End of multi-line
         inMultiline = false;
-        const fullInput = multilineBuffer;
+        var fullInput = multilineBuffer;
         multilineBuffer = '';
-        if (fullInput.trim()) {
-          await processInput(fullInput);
-        }
+        if (fullInput.trim()) await processInput(fullInput);
         rl.prompt();
         return;
       }
       multilineBuffer += input + '\n';
-      process.stdout.write(`${C.gray}... ${C.reset}`);
+      process.stdout.write(C.gray + '... ' + C.reset);
       return;
     }
 
-    // Start multi-line with ``` or ---
     if (trimmed === '```' || trimmed === '---') {
       inMultiline = true;
       multilineBuffer = '';
-      process.stdout.write(`${C.dim}Multi-line mode. Type ${C.bold}\`\`\`${C.reset}${C.dim} or ${C.bold}---${C.reset}${C.dim} to finish${C.reset}\n`);
-      process.stdout.write(`${C.gray}... ${C.reset}`);
+      process.stdout.write(C.dim + 'Multi-line mode. Type ' + C.bold + '```' + C.reset + C.dim + ' or ' + C.bold + '---' + C.reset + C.dim + ' to finish' + C.reset + '\n');
+      process.stdout.write(C.gray + '... ' + C.reset);
       return;
     }
 
-    // Empty input
-    if (!trimmed) {
-      rl.prompt();
-      return;
-    }
+    if (!trimmed) { rl.prompt(); return; }
 
-    // Slash commands
     if (trimmed.startsWith('/')) {
       await handleSlashCommand(trimmed, state, rl);
       rl.prompt();
@@ -247,476 +229,425 @@ code here
     rl.prompt();
   });
 
-  rl.on('close', () => {
-    console.log(`\n${C.dim}Goodbye! 👋${C.reset}\n`);
+  rl.on('close', function() {
+    console.log('\n' + C.dim + 'Goodbye! 👋' + C.reset + '\n');
     process.exit(0);
   });
 
   async function processInput(input) {
     // Expand @file references
-    let expandedInput = input;
-    const fileRefs = input.match(/@[\w\-\.\/]+/g);
-    let fileContexts = '';
+    var expandedInput = input;
+    var fileRefs = input.match(/@[\w\-\.\/]+/g);
+    var fileContexts = '';
 
     if (fileRefs) {
-      for (const ref of fileRefs) {
-        const filepath = ref.slice(1);
-        const resolved = path.resolve(cwd, filepath);
+      for (var i = 0; i < fileRefs.length; i++) {
+        var filepath = fileRefs[i].slice(1);
+        var resolved = path.resolve(cwd, filepath);
         if (fs.existsSync(resolved)) {
           try {
-            const { content, truncated } = readFileSync(resolved);
-            fileContexts += `\n\n--- File: ${filepath} ---\n${content}${truncated ? '\n[...truncated]' : ''}\n`;
-            expandedInput = expandedInput.replace(ref, `[file: ${filepath}]`);
-          } catch {
-            fileContexts += `\n--- File: ${filepath} (could not read) ---\n`;
+            var result = readFileSync(resolved);
+            fileContexts += '\n\n--- File: ' + filepath + ' ---\n' + result.content + (result.truncated ? '\n[...truncated]' : '') + '\n';
+            expandedInput = expandedInput.replace(fileRefs[i], '[file: ' + filepath + ']');
+          } catch (e) {
+            fileContexts += '\n--- File: ' + filepath + ' (could not read) ---\n';
           }
         }
       }
     }
 
-    // Add file context as a separate message
     if (fileContexts) {
-      state.messages.push({ role: 'user', content: `Please review these files:\n${fileContexts}` });
+      state.messages.push({ role: 'user', content: 'Please review these files:\n' + fileContexts });
     }
 
-    // Add user message
     state.messages.push({ role: 'user', content: expandedInput });
 
-    // Trim conversation if too long (keep system + last 20 messages)
+    // Trim conversation
     if (state.messages.length > 22) {
-      const sysMsg = state.messages[0];
-      state.messages = [sysMsg, ...state.messages.slice(-20)];
+      var sysMsg = state.messages[0];
+      state.messages = [sysMsg].concat(state.messages.slice(-20));
     }
 
-    // Stream response
-    process.stdout.write(`${C.green}${C.bold}stew${C.reset} ${C.dim}›${C.reset} `);
+    process.stdout.write(C.green + C.bold + 'stew' + C.reset + ' ' + C.dim + '>' + C.reset + ' ');
 
-    let fullResponse = '';
-    let inCodeBlock = false;
-    let codeBuffer = '';
-    let codeLang = '';
-    let thinkingDots = true;
+    var fullResponse = '';
 
     try {
-      const controller = new AbortController();
-
-      if (state.streaming) {
-        await streamChatCompletion(client, state.messages, {
-          model: state.model,
-          webSearch: state.webSearch,
-          temperature: 0.7,
-          onToken: (token) => {
-            if (thinkingDots) {
-              thinkingDots = false;
-              process.stdout.write('\r' + ' '.repeat(20) + '\r');
-            }
-
-            fullResponse += token;
-
-            // Basic streaming output — just print tokens
-            // Detect code blocks for highlighting
-            if (fullResponse.includes('```')) {
-              // Will highlight after completion
-            }
-            process.stdout.write(token);
-          },
-        });
-      } else {
-        // Non-streaming fallback
-        const result = await client.post('/v1/chat/completions', {
-          model: state.model,
-          messages: state.messages,
-          web_search: state.webSearch,
-        });
-        fullResponse = result.choices?.[0]?.message?.content || result.response || '';
-        process.stdout.write(fullResponse);
-      }
+      await streamChatCompletion(client, state.messages, {
+        model: state.model,
+        webSearch: state.webSearch,
+        temperature: 0.7,
+        onToken: function(token) {
+          fullResponse += token;
+          process.stdout.write(token);
+        },
+      });
 
       console.log('\n');
-
-      // Add assistant response to history
       state.messages.push({ role: 'assistant', content: fullResponse });
 
-      // Extract and offer to apply file changes
-      await extractAndOfferChanges(fullResponse, state);
+      // Extract and apply file changes
+      await extractAndApplyChanges(fullResponse, state);
 
-      // Check for shell command suggestions
-      await extractAndOfferShellCommands(fullResponse, state);
+      // Suggest shell commands
+      suggestShellCommands(fullResponse, state);
 
     } catch (err) {
       process.stdout.write('\r' + ' '.repeat(50) + '\r');
-      console.log(`${C.red}❌ ${err.message || err}${C.reset}`);
-      if (err.suggestion) {
-        console.log(`${C.dim}💡 ${err.suggestion}${C.reset}`);
-      }
+      console.log(C.red + 'Error: ' + (err.message || err) + C.reset);
+      if (err.suggestion) console.log(C.dim + 'Hint: ' + err.suggestion + C.reset);
       console.log('');
-      // Remove the failed user message
-      if (state.messages[state.messages.length - 1]?.role === 'user') {
+      if (state.messages[state.messages.length - 1] && state.messages[state.messages.length - 1].role === 'user') {
         state.messages.pop();
       }
     }
   }
 
-  async function extractAndOfferChanges(response, state) {
-    // Find code blocks with file paths
-    const codeBlocks = response.match(/```(\w+)\s*\n\/\/\s*(?:filepath:|file:)?\s*(.+?)\n([\s\S]*?)```/g);
+  async function extractAndApplyChanges(response, state) {
+    var codeBlocks = response.match(/```(\w+)\s*\n\/\/\s*(?:filepath:|file:)?\s*(.+?)\n([\s\S]*?)```/g);
     if (!codeBlocks || codeBlocks.length === 0) return;
     if (state.planMode) {
-      console.log(`${C.dim}(Plan mode — no files changed. Turn off with /plan off)${C.reset}\n`);
+      console.log(C.dim + '(Plan mode — no files changed. /plan off to apply)' + C.reset + '\n');
       return;
     }
 
-    for (const block of codeBlocks) {
-      const match = block.match(/```(\w+)\s*\n\/\/\s*(?:filepath:|file:)?\s*(.+?)\n([\s\S]*?)```/);
+    for (var i = 0; i < codeBlocks.length; i++) {
+      var match = codeBlocks[i].match(/```(\w+)\s*\n\/\/\s*(?:filepath:|file:)?\s*(.+?)\n([\s\S]*?)```/);
       if (!match) continue;
 
-      const [, lang, filepath, content] = match;
-      const resolved = path.resolve(cwd, filepath.trim());
-      const fileExists = fs.existsSync(resolved);
+      var lang = match[1];
+      var filepath = match[2].trim();
+      var content = match[3];
+      var resolved = path.resolve(cwd, filepath);
+      var fileExists = fs.existsSync(resolved);
 
       if (fileExists) {
-        // Check if content is actually different
-        const oldContent = fs.readFileSync(resolved, 'utf8');
+        var oldContent = fs.readFileSync(resolved, 'utf8');
         if (oldContent === content) continue;
 
-        const relPath = path.relative(cwd, resolved);
-        console.log(`${C.yellow}📝 ${relPath} ${C.reset}${C.dim}was modified by Stew${C.reset}`);
-
-        // Show diff
-        const d = diff(oldContent, content);
-        const dLines = d.split('\n').slice(0, 15);
-        console.log(dLines.join('\n'));
-        if (d.split('\n').length > 15) console.log(`${C.dim}... (${d.split('\n').length - 15} more lines)${C.reset}`);
-        console.log('');
-
-        // Auto-apply (with undo)
-        state.undoStack.push({
-          type: 'edit',
-          path: resolved,
-          oldContent,
-          newContent: content,
-        });
+        state.undoStack.push({ type: 'edit', path: resolved, oldContent: oldContent, newContent: content });
         fs.writeFileSync(resolved, content);
-        console.log(`${C.green}✅ Applied to ${relPath}${C.reset} ${C.dim}(undo with /undo)${C.reset}\n`);
+        console.log(C.green + 'Applied to ' + path.relative(cwd, resolved) + C.reset + C.dim + ' (/undo to revert)' + C.reset);
+        state.filesChanged++;
       } else {
-        // New file — create directory if needed
-        const dir = path.dirname(resolved);
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-
-        state.undoStack.push({
-          type: 'create',
-          path: resolved,
-        });
+        var dir = path.dirname(resolved);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        state.undoStack.push({ type: 'create', path: resolved });
         fs.writeFileSync(resolved, content);
-        console.log(`${C.green}✅ Created ${path.relative(cwd, resolved)}${C.reset} ${C.dim}(undo with /undo)${C.reset}\n`);
+        console.log(C.green + 'Created ' + path.relative(cwd, resolved) + C.reset + C.dim + ' (/undo to revert)' + C.reset);
+        state.filesChanged++;
       }
     }
+    console.log('');
   }
 
-  async function extractAndOfferShellCommands(response, state) {
-    // Find bash/shell code blocks
-    const bashBlocks = response.match(/```(?:bash|sh|shell|zsh)\s*\n([\s\S]*?)```/g);
+  function suggestShellCommands(response, state) {
+    var bashBlocks = response.match(/```(?:bash|sh|shell|zsh)\s*\n([\s\S]*?)```/g);
     if (!bashBlocks || state.planMode) return;
 
-    for (const block of bashBlocks) {
-      const match = block.match(/```(?:bash|sh|shell|zsh)\s*\n([\s\S]*?)```/);
+    for (var i = 0; i < bashBlocks.length; i++) {
+      var match = bashBlocks[i].match(/```(?:bash|sh|shell|zsh)\s*\n([\s\S]*?)```/);
       if (!match) continue;
-      const cmd = match[1].trim();
-      // Skip if it's inside a file code block (has filepath comment)
-      if (cmd.startsWith('// filepath') || cmd.startsWith('// file:')) continue;
-      // Skip trivial commands
-      if (cmd.length < 3 || cmd.startsWith('#!')) continue;
+      var cmd = match[1].trim();
+      if (cmd.indexOf('// filepath') === 0 || cmd.indexOf('// file:') === 0) continue;
+      if (cmd.length < 3 || cmd.indexOf('#!') === 0) continue;
 
-      console.log(`${C.dim}💡 Run this? ${C.reset}${C.cyan}${cmd.slice(0, 80)}${cmd.length > 80 ? '...' : ''}${C.reset}`);
-      console.log(`${C.dim}   Use ${C.reset}${C.bold}/run ${cmd}${C.reset}${C.dim} to execute${C.reset}\n`);
+      console.log(C.dim + 'Run: ' + C.reset + C.cyan + cmd.slice(0, 80) + (cmd.length > 80 ? '...' : '') + C.reset);
+      console.log(C.dim + '  Use /run ' + cmd + C.reset + '\n');
     }
   }
 
   async function handleSlashCommand(input, state, rl) {
-    const parts = input.slice(1).split(/\s+/);
-    const cmd = parts[0].toLowerCase();
-    const args = parts.slice(1).join(' ');
+    var parts = input.slice(1).split(/\s+/);
+    var cmd = parts[0].toLowerCase();
+    var args = parts.slice(1).join(' ');
 
     switch (cmd) {
       case 'help': case 'h': case '?':
-        console.log(`\n${C.bold}Commands:${C.reset}`);
-        for (const [name, desc] of SLASH_COMMANDS) {
-          console.log(`  ${C.cyan}${name.padEnd(22)}${C.reset} ${C.dim}${desc}${C.reset}`);
+        console.log('\n' + C.bold + 'Stew Code Commands:' + C.reset);
+        for (var i = 0; i < SLASH_COMMANDS.length; i++) {
+          console.log('  ' + C.cyan + SLASH_COMMANDS[i][0].padEnd(24) + C.reset + C.dim + SLASH_COMMANDS[i][1] + C.reset);
         }
+        console.log('\n' + C.bold + 'Built-in Skills:' + C.reset);
+        var skills = listSkills();
+        skills.builtin.forEach(function(s) {
+          console.log('  ' + C.magenta + ('/skill ' + s.name).padEnd(24) + C.reset + C.dim + s.description + C.reset);
+        });
         console.log('');
         break;
 
       case 'files': case 'ls':
-        const pattern = args || '**/*';
-        const files = listFiles(cwd, pattern, { maxDepth: 5 });
+        var pattern = args || '**/*';
+        var files = listFiles(cwd, pattern, { maxDepth: 5 });
         if (files.length === 0) {
-          console.log(`${C.dim}No files matching ${pattern}${C.reset}`);
+          console.log(C.dim + 'No files matching ' + pattern + C.reset);
         } else {
-          console.log(`\n${C.bold}Files (${files.length})${C.reset}:`);
-          for (const f of files.slice(0, 50)) {
-            console.log(`  ${C.dim}${f}${C.reset}`);
+          console.log('\n' + C.bold + 'Files (' + files.length + '):' + C.reset);
+          for (var j = 0; j < Math.min(files.length, 50); j++) {
+            console.log('  ' + C.dim + files[j] + C.reset);
           }
-          if (files.length > 50) console.log(`${C.dim}  ... and ${files.length - 50} more${C.reset}`);
+          if (files.length > 50) console.log(C.dim + '  ... and ' + (files.length - 50) + ' more' + C.reset);
         }
         console.log('');
         break;
 
       case 'read': case 'cat':
-        if (!args) {
-          console.log(`${C.red}Usage: /read <filepath>${C.reset}`);
-          break;
-        }
-        const readPath = path.resolve(cwd, args);
-        if (!fs.existsSync(readPath)) {
-          console.log(`${C.red}File not found: ${args}${C.reset}`);
-          break;
-        }
-        const { content: fileContent, truncated } = readFileSync(readPath);
-        const lang = detectLang(args);
-        console.log(`\n${C.bold}${args}${C.reset} ${C.dim}(${lang})${C.reset}`);
+        if (!args) { console.log(C.red + 'Usage: /read <filepath>' + C.reset); break; }
+        var readPath = path.resolve(cwd, args);
+        if (!fs.existsSync(readPath)) { console.log(C.red + 'File not found: ' + args + C.reset); break; }
+        var fc = readFileSync(readPath);
+        var lang = detectLang(args);
+        console.log('\n' + C.bold + args + C.reset + ' ' + C.dim + '(' + lang + ')' + C.reset);
         console.log(C.dim + '─'.repeat(60) + C.reset);
-        console.log(highlightCode(fileContent, lang));
-        if (truncated) console.log(`${C.yellow}\n[...truncated]${C.reset}`);
+        console.log(highlightCode(fc.content, lang));
+        if (fc.truncated) console.log(C.yellow + '\n[...truncated]' + C.reset);
         console.log(C.dim + '─'.repeat(60) + C.reset + '\n');
-        // Also add to context
-        state.messages.push({ role: 'user', content: `Read file ${args}:\n${fileContent}` });
+        state.messages.push({ role: 'user', content: 'Read file ' + args + ':\n' + fc.content });
         break;
 
       case 'clear': case 'reset':
         state.messages = [{ role: 'system', content: buildSystemPrompt() }];
-        console.log(`${C.green}✅ Conversation cleared${C.reset}\n`);
+        console.log(C.green + 'Conversation cleared' + C.reset + '\n');
         break;
 
       case 'model': case 'm':
         if (!args) {
-          console.log(`\n${C.bold}Available models:${C.reset}`);
-          for (const [id, desc] of MODELS) {
-            const active = state.model === id ? C.green + '→ ' : '  ';
-            console.log(`${active}${id.padEnd(20)} ${C.dim}${desc}${C.reset}`);
+          console.log('\n' + C.bold + 'Models:' + C.reset);
+          for (var k = 0; k < MODELS.length; k++) {
+            var active = state.model === MODELS[k][0] ? C.green + '→ ' : '  ';
+            console.log(active + MODELS[k][0].padEnd(20) + C.dim + MODELS[k][1] + C.reset);
           }
-          console.log('');
         } else {
           state.model = args;
-          console.log(`${C.green}✅ Model set to: ${args}${C.reset}\n`);
+          console.log(C.green + 'Model: ' + args + C.reset + '\n');
         }
         break;
 
       case 'persona': case 'p':
         if (!args) {
-          console.log(`\n${C.bold}Personas:${C.reset}`);
-          for (const p of PERSONAS) {
-            const active = state.persona === p ? C.green + '→ ' : '  ';
-            console.log(`${active}${p}`);
+          console.log('\n' + C.bold + 'Personas:' + C.reset);
+          for (var m = 0; m < PERSONAS.length; m++) {
+            var a = state.persona === PERSONAS[m] ? C.green + '→ ' : '  ';
+            console.log(a + PERSONAS[m]);
           }
-          console.log('');
         } else {
           state.persona = args;
           state.messages[0].content = buildSystemPrompt();
-          console.log(`${C.green}✅ Persona set to: ${args}${C.reset}\n`);
+          console.log(C.green + 'Persona: ' + args + C.reset + '\n');
         }
         break;
 
       case 'web': case 'search':
-        if (args === 'on' || args === 'true' || args === '1') {
-          state.webSearch = true;
-          console.log(`${C.green}✅ Web search enabled${C.reset}\n`);
-        } else if (args === 'off' || args === 'false' || args === '0') {
-          state.webSearch = false;
-          console.log(`${C.green}✅ Web search disabled${C.reset}\n`);
-        } else {
-          state.webSearch = !state.webSearch;
-          console.log(`${C.cyan}Web search: ${state.webSearch ? 'on' : 'off'}${C.reset}\n`);
-        }
+        if (args === 'on' || args === 'true' || args === '1') state.webSearch = true;
+        else if (args === 'off' || args === 'false' || args === '0') state.webSearch = false;
+        else state.webSearch = !state.webSearch;
+        console.log(C.cyan + 'Web search: ' + (state.webSearch ? 'on' : 'off') + C.reset + '\n');
         break;
 
       case 'plan':
-        if (args === 'on' || args === 'true') {
-          state.planMode = true;
-          console.log(`${C.yellow}✅ Plan mode ON — Stew will suggest changes but won't apply them${C.reset}\n`);
-        } else if (args === 'off' || args === 'false') {
-          state.planMode = false;
-          console.log(`${C.green}✅ Plan mode OFF — Stew will apply changes automatically${C.reset}\n`);
-        } else {
-          state.planMode = !state.planMode;
-          console.log(`${C.cyan}Plan mode: ${state.planMode ? C.yellow + 'on (read-only)' : C.green + 'off (auto-apply)'}${C.reset}\n`);
+        if (args === 'on' || args === 'true') state.planMode = true;
+        else if (args === 'off' || args === 'false') state.planMode = false;
+        else state.planMode = !state.planMode;
+        console.log(C.cyan + 'Plan mode: ' + (state.planMode ? C.yellow + 'on (read-only)' : C.green + 'off (auto-apply)') + C.reset + '\n');
+        break;
+
+      /* === SKILL FORGE === */
+      case 'skills': case 'skill-list':
+        var sl = listSkills();
+        console.log('\n' + C.bold + 'Stew Code Skills (' + sl.total + ' total)' + C.reset + '\n');
+        console.log(C.bold + 'Built-in (' + sl.builtin.length + '):' + C.reset);
+        sl.builtin.forEach(function(s) {
+          console.log('  ' + C.magenta + s.name.padEnd(14) + C.reset + C.dim + s.description + C.reset);
+        });
+        if (sl.custom.length > 0) {
+          console.log('\n' + C.bold + 'Custom (' + sl.custom.length + '):' + C.reset);
+          sl.custom.forEach(function(s) {
+            console.log('  ' + C.yellow + s.name.padEnd(14) + C.reset + C.dim + s.description + C.reset);
+          });
+        }
+        console.log('\n' + C.dim + 'Use /skill <name> [args] to run a skill' + C.reset);
+        console.log(C.dim + 'Use /forge <name> <description> to create a new skill' + C.reset + '\n');
+        break;
+
+      case 'skill':
+        if (!args) { console.log(C.red + 'Usage: /skill <name> [args]' + C.reset + '\n'); break; }
+        var skillParts = args.split(/\s+/);
+        var skillName = skillParts[0];
+        var skillArgs = skillParts.slice(1);
+        console.log(C.dim + 'Running skill: ' + skillName + '...' + C.reset);
+        var skillResult = runSkill(skillName, skillArgs, cwd);
+        console.log('');
+        console.log(skillResult.output || 'No output');
+        console.log('');
+
+        // If skill needs AI follow-up, feed it to the conversation
+        if (skillResult.needsAI && skillResult.prompt) {
+          console.log(C.dim + 'Feeding to Stew AI...' + C.reset + '\n');
+          await processInput(skillResult.prompt);
         }
         break;
 
+      case 'forge':
+        if (!args) { console.log(C.red + 'Usage: /forge <skill-name> <description>' + C.reset + '\n'); break; }
+        var forgeParts = args.split(/\s+/);
+        var forgeName = forgeParts[0];
+        var forgeDesc = forgeParts.slice(1).join(' ');
+        if (!forgeDesc) { console.log(C.red + 'Provide a description for the skill' + C.reset + '\n'); break; }
+        var forged = forgeSkill(forgeName, forgeDesc);
+        console.log(C.green + forged.output + C.reset + '\n');
+        state.skillsForged++;
+        break;
+
+      case 'unforge':
+        if (!args) { console.log(C.red + 'Usage: /unforge <skill-name>' + C.reset + '\n'); break; }
+        var deleted = deleteSkill(args.trim());
+        console.log((deleted.success ? C.green : C.red) + deleted.output + C.reset + '\n');
+        break;
+
+      /* === AGENT MODE === */
+      case 'agent':
+        if (!args) { console.log(C.red + 'Usage: /agent <task description>' + C.reset); console.log(C.dim + 'Example: /agent fix all TypeScript errors' + C.reset + '\n'); break; }
+        var { runAgent } = require('../utils/agent-engine');
+        await runAgent(client, args, cwd, { autoApply: !state.planMode });
+        break;
+
+      /* === SESSION === */
       case 'save':
-        if (!args) {
-          const defaultName = `session-${Date.now()}`;
-          saveSession(defaultName, state.messages, { model: state.model, persona: state.persona });
-          console.log(`${C.green}✅ Session saved as: ${defaultName}${C.reset}\n`);
-        } else {
-          saveSession(args, state.messages, { model: state.model, persona: state.persona });
-          console.log(`${C.green}✅ Session saved as: ${args}${C.reset}\n`);
-        }
+        var sessionName = args || ('session-' + Date.now());
+        saveSession(sessionName, state.messages, { model: state.model, persona: state.persona });
+        console.log(C.green + 'Saved: ' + sessionName + C.reset + '\n');
         break;
 
       case 'load':
-        if (!args) {
-          console.log(`${C.red}Usage: /load <name>${C.reset}`);
-          break;
-        }
-        const session = loadSession(args);
+        if (!args) { console.log(C.red + 'Usage: /load <name>' + C.reset); break; }
+        var session = loadSession(args);
         if (session) {
           state.messages = session.messages;
-          state.model = session.meta?.model || state.model;
-          state.persona = session.meta?.persona || state.persona;
-          console.log(`${C.green}✅ Loaded session: ${args} (${session.messages.length} messages)${C.reset}\n`);
+          state.model = (session.meta && session.meta.model) || state.model;
+          state.persona = (session.meta && session.meta.persona) || state.persona;
+          console.log(C.green + 'Loaded: ' + args + ' (' + session.messages.length + ' messages)' + C.reset + '\n');
         } else {
-          console.log(`${C.red}Session not found: ${args}${C.reset}\n`);
+          console.log(C.red + 'Session not found: ' + args + C.reset + '\n');
         }
         break;
 
-      case 'sessions': case 'ls-sessions':
-        const sessions = listSessions();
-        if (sessions.length === 0) {
-          console.log(`${C.dim}No saved sessions${C.reset}\n`);
-        } else {
-          console.log(`\n${C.bold}Saved sessions:${C.reset}`);
-          for (const s of sessions) {
-            console.log(`  ${C.cyan}${s.name.padEnd(25)}${C.reset} ${C.dim}${s.messages} msgs · ${s.savedAt}${C.reset}`);
-          }
-          console.log('');
-        }
+      case 'sessions':
+        var sessions = listSessions();
+        if (sessions.length === 0) { console.log(C.dim + 'No saved sessions' + C.reset + '\n'); break; }
+        console.log('\n' + C.bold + 'Sessions:' + C.reset);
+        sessions.forEach(function(s) {
+          console.log('  ' + C.cyan + s.name.padEnd(25) + C.reset + C.dim + s.messages + ' msgs · ' + s.savedAt + C.reset);
+        });
+        console.log('');
         break;
 
+      /* === GIT === */
       case 'git':
-        if (!git.isGitRepo(cwd)) {
-          console.log(`${C.red}Not a git repo${C.reset}\n`);
-          break;
-        }
-        const subCmd = parts[1]?.toLowerCase() || 'status';
+        if (!git.isGitRepo(cwd)) { console.log(C.red + 'Not a git repo' + C.reset + '\n'); break; }
+        var subCmd = parts[1] ? parts[1].toLowerCase() : 'status';
         if (subCmd === 'status' || subCmd === 'st') {
-          const gs = git.status(cwd);
-          console.log(`\n${C.bold}Branch:${C.reset} ${C.cyan}${gs.branch}${C.reset}`);
-          console.log(`${C.bold}Changes:${C.reset} ${gs.changes.length > 0 ? C.yellow + gs.changes.length : C.green + '0'}${C.reset}`);
-          for (const c of gs.changes) {
-            const status = c.slice(0, 2);
-            const file = c.slice(3);
-            const color = status.includes('M') ? C.yellow : status.includes('A') ? C.green : status.includes('D') ? C.red : C.cyan;
-            console.log(`  ${color}${status}${C.reset} ${file}`);
-          }
-          console.log('');
+          var gs = git.status(cwd);
+          console.log('\n' + C.bold + 'Branch:' + C.reset + ' ' + C.cyan + gs.branch + C.reset);
+          console.log(C.bold + 'Changes:' + C.reset + ' ' + (gs.changes.length > 0 ? C.yellow + gs.changes.length : C.green + '0') + C.reset);
+          gs.changes.forEach(function(c) {
+            var st = c.slice(0, 2);
+            var f = c.slice(3);
+            var color = st.indexOf('M') !== -1 ? C.yellow : st.indexOf('A') !== -1 ? C.green : st.indexOf('D') !== -1 ? C.red : C.cyan;
+            console.log('  ' + color + st + C.reset + ' ' + f);
+          });
         } else if (subCmd === 'diff') {
-          const d = git.diff(cwd, parts[2] === '--staged');
-          if (d) {
-            console.log(d);
-          } else {
-            console.log(`${C.green}No changes${C.reset}`);
-          }
-          console.log('');
+          var d = git.diff(cwd, parts[2] === '--staged');
+          console.log(d || C.green + 'No changes' + C.reset);
         } else if (subCmd === 'log') {
-          const l = git.log(cwd, parseInt(parts[2]) || 10);
+          var l = git.log(cwd, parseInt(parts[2]) || 10);
           console.log(l || 'No commits');
-          console.log('');
         } else if (subCmd === 'commit') {
-          const msg = parts.slice(2).join(' ');
-          if (!msg) {
-            console.log(`${C.red}Usage: /git commit <message>${C.reset}`);
-            break;
-          }
+          var msg = parts.slice(2).join(' ');
+          if (!msg) { console.log(C.red + 'Usage: /git commit <message>' + C.reset); break; }
           git.addAll(cwd);
-          const result = git.commit(msg, cwd);
-          if (result.ok) {
-            console.log(`${C.green}✅ Committed: ${msg}${C.reset}`);
-          } else {
-            console.log(`${C.red}❌ ${result.output}${C.reset}`);
-          }
-          console.log('');
+          var result = git.commit(msg, cwd);
+          console.log(result.ok ? C.green + 'Committed: ' + msg + C.reset : C.red + result.output + C.reset);
         }
+        console.log('');
         break;
 
+      /* === SHELL === */
       case 'run': case 'exec': case '$':
-        if (!args) {
-          console.log(`${C.red}Usage: /run <command>${C.reset}\n`);
-          break;
-        }
-        console.log(`${C.dim}$ ${args}${C.reset}`);
+        if (!args) { console.log(C.red + 'Usage: /run <command>' + C.reset + '\n'); break; }
+        console.log(C.dim + '$ ' + args + C.reset);
         try {
-          const { execSync } = require('child_process');
-          const output = execSync(args, { cwd, encoding: 'utf8', timeout: 30000, stdio: 'pipe' });
+          var { execSync } = require('child_process');
+          var output = execSync(args, { cwd, encoding: 'utf8', timeout: 30000, stdio: 'pipe' });
           console.log(output || C.dim + '(no output)' + C.reset);
         } catch (err) {
-          console.log(`${C.red}${err.stderr || err.stdout || err.message}${C.reset}`);
+          console.log(C.red + (err.stderr || err.stdout || err.message) + C.reset);
         }
         console.log('');
         break;
 
       case 'undo':
-        const action = state.undoStack.pop();
-        if (!action) {
-          console.log(`${C.dim}Nothing to undo${C.reset}\n`);
-          break;
-        }
+        var action = state.undoStack.pop();
+        if (!action) { console.log(C.dim + 'Nothing to undo' + C.reset + '\n'); break; }
         if (action.type === 'edit') {
           fs.writeFileSync(action.path, action.oldContent);
-          console.log(`${C.green}✅ Reverted ${path.relative(cwd, action.path)}${C.reset}\n`);
+          console.log(C.green + 'Reverted ' + path.relative(cwd, action.path) + C.reset + '\n');
         } else if (action.type === 'create') {
           fs.unlinkSync(action.path);
-          console.log(`${C.green}✅ Deleted ${path.relative(cwd, action.path)}${C.reset}\n`);
+          console.log(C.green + 'Deleted ' + path.relative(cwd, action.path) + C.reset + '\n');
         }
         break;
 
       case 'diff':
-        if (!args) {
-          console.log(`${C.red}Usage: /diff <filepath>${C.reset}\n`);
-          break;
-        }
-        const diffPath = path.resolve(cwd, args);
-        if (!fs.existsSync(diffPath)) {
-          console.log(`${C.red}File not found: ${args}${C.reset}\n`);
-          break;
-        }
+        if (!args) { console.log(C.red + 'Usage: /diff <filepath>' + C.reset + '\n'); break; }
+        var diffPath = path.resolve(cwd, args);
+        if (!fs.existsSync(diffPath)) { console.log(C.red + 'File not found: ' + args + C.reset + '\n'); break; }
         if (git.isGitRepo(cwd)) {
-          const d = git.diff(cwd);
-          // Filter for the specific file
-          const fileDiff = d.split('diff --git').find(b => b.includes(args));
-          if (fileDiff) {
-            console.log('diff --git' + fileDiff);
-          } else {
-            console.log(`${C.green}No git changes for ${args}${C.reset}`);
-          }
+          var gd = git.diff(cwd);
+          var fileDiff = gd.split('diff --git').find(function(b) { return b.indexOf(args) !== -1; });
+          console.log(fileDiff ? 'diff --git' + fileDiff : C.green + 'No git changes for ' + args + C.reset);
         } else {
-          console.log(`${C.dim}Not a git repo — showing current content:${C.reset}`);
-          const { content: c } = readFileSync(diffPath);
-          console.log(c);
+          var dc = readFileSync(diffPath);
+          console.log(dc.content);
+        }
+        console.log('');
+        break;
+
+      case 'status':
+        console.log('\n' + C.bold + 'Stew Code Status' + C.reset);
+        console.log('  Model: ' + C.cyan + state.model + C.reset);
+        console.log('  Persona: ' + C.cyan + state.persona + C.reset);
+        console.log('  Web search: ' + (state.webSearch ? C.green + 'on' : C.gray + 'off') + C.reset);
+        console.log('  Plan mode: ' + (state.planMode ? C.yellow + 'on' : C.gray + 'off') + C.reset);
+        console.log('  Messages: ' + state.messages.length);
+        console.log('  Files changed: ' + state.filesChanged);
+        console.log('  Skills forged: ' + state.skillsForged);
+        console.log('  Undo stack: ' + state.undoStack.stack.length);
+        console.log('  Project: ' + C.dim + projCtx.root + C.reset + ' (' + projCtx.type + ')');
+        var sk = listSkills();
+        console.log('  Skills: ' + sk.total + ' (' + sk.builtin.length + ' built-in, ' + sk.custom.length + ' custom)');
+        if (git.isGitRepo(cwd)) {
+          var gss = git.status(cwd);
+          console.log('  Git: ' + C.cyan + gss.branch + C.reset + ' ' + (gss.changes.length > 0 ? C.yellow + '(' + gss.changes.length + ' changes)' : C.green + '(clean)') + C.reset);
         }
         console.log('');
         break;
 
       case 'exit': case 'quit': case 'q':
-        console.log(`\n${C.dim}Goodbye! 👋${C.reset}\n`);
+        if (state.filesChanged > 0 || state.skillsForged > 0) {
+          console.log(C.dim + 'Session: ' + state.filesChanged + ' files changed, ' + state.skillsForged + ' skills forged.' + C.reset);
+        }
+        console.log('\n' + C.dim + 'Goodbye! 👋' + C.reset + '\n');
         process.exit(0);
         break;
 
-      case 'status':
-        // Show current state
-        console.log(`\n${C.bold}Stew Code Status${C.reset}`);
-        console.log(`  Model: ${C.cyan}${state.model}${C.reset}`);
-        console.log(`  Persona: ${C.cyan}${state.persona}${C.reset}`);
-        console.log(`  Web search: ${state.webSearch ? C.green + 'on' : C.gray + 'off'}${C.reset}`);
-        console.log(`  Plan mode: ${state.planMode ? C.yellow + 'on' : C.gray + 'off'}${C.reset}`);
-        console.log(`  Messages: ${state.messages.length}`);
-        console.log(`  Undo stack: ${state.undoStack.stack.length}`);
-        console.log(`  Project: ${C.dim}${projCtx.root}${C.reset} (${projCtx.type})`);
-        if (git.isGitRepo(cwd)) {
-          const gs = git.status(cwd);
-          console.log(`  Git: ${C.cyan}${gs.branch}${C.reset} ${gs.changes.length > 0 ? C.yellow + `(${gs.changes.length} changes)` : C.green + '(clean)'}${C.reset}`);
-        }
-        console.log('');
-        break;
-
-      case 'debug':
-        state.debugMode = !state.debugMode;
-        console.log(`${C.cyan}Debug mode: ${state.debugMode ? 'on' : 'off'}${C.reset}\n`);
-        break;
-
       default:
-        console.log(`${C.red}Unknown command: /${cmd}${C.reset} ${C.dim}(try /help)${C.reset}\n`);
+        // Check if it matches a skill name
+        var skillCheck = runSkill(cmd, parts.slice(1), cwd);
+        if (skillCheck.success || skillCheck.output !== ('Skill not found: ' + cmd + '. Use /skills to see available skills or /forge to create one.')) {
+          console.log(skillCheck.output + '\n');
+        } else {
+          console.log(C.red + 'Unknown command: /' + cmd + C.reset + ' ' + C.dim + '(try /help)' + C.reset + '\n');
+        }
         break;
     }
   }
