@@ -1,14 +1,3 @@
-/**
- * Stew Code — The most powerful AI coding agent for the terminal.
- *
- * Superior to OpenCode, Kilo Code, Claude Code, and Glama because:
- * - Skill Forge: auto-creates skills when it can't do something
- * - Agent Mode: autonomous multi-step task execution
- * - 16+ built-in skills (scaffold, test, docker, ci, security, etc.)
- * - Zero dependencies, zero cost (free Stew API tier)
- * - Works with any language/framework
- * - Self-improving — learns and saves reusable skills
- */
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
@@ -28,8 +17,6 @@ var C = {
   blue: '\x1b[34m', magenta: '\x1b[35m', cyan: '\x1b[36m',
   gray: '\x1b[90m', white: '\x1b[37m',
 };
-
-// BANNER now comes from mascot.bootBanner() — Stew has a face.
 
 var MODELS = [
   ['stew-default', 'Auto-select best model'],
@@ -158,7 +145,6 @@ async function codeCommand(args) {
 
   state.messages.push({ role: 'system', content: buildSystemPrompt() });
 
-  // Print banner
   console.log(mascot.bootBanner());
 
   var skillsList = listSkills();
@@ -192,7 +178,6 @@ async function codeCommand(args) {
   rl.on('line', async function(input) {
     var trimmed = input.trim();
 
-    // Multi-line handling
     if (inMultiline) {
       if (trimmed === '```' || trimmed === '---') {
         inMultiline = false;
@@ -233,7 +218,6 @@ async function codeCommand(args) {
   });
 
   async function processInput(input) {
-    // Expand @file references
     var expandedInput = input;
     var fileRefs = input.match(/@[\w\-\.\/]+/g);
     var fileContexts = '';
@@ -260,7 +244,6 @@ async function codeCommand(args) {
 
     state.messages.push({ role: 'user', content: expandedInput });
 
-    // Trim conversation
     if (state.messages.length > 22) {
       var sysMsg = state.messages[0];
       state.messages = [sysMsg].concat(state.messages.slice(-20));
@@ -284,10 +267,8 @@ async function codeCommand(args) {
       console.log('\n');
       state.messages.push({ role: 'assistant', content: fullResponse });
 
-      // Extract and apply file changes
       await extractAndApplyChanges(fullResponse, state);
 
-      // Suggest shell commands
       suggestShellCommands(fullResponse, state);
 
     } catch (err) {
@@ -450,7 +431,6 @@ async function codeCommand(args) {
         console.log(C.cyan + 'Plan mode: ' + (state.planMode ? C.yellow + 'on (read-only)' : C.green + 'off (auto-apply)') + C.reset + '\n');
         break;
 
-      /* === SKILL FORGE === */
       case 'skills': case 'skill-list':
         var sl = listSkills();
         console.log('\n' + C.bold + 'Stew Code Skills (' + sl.total + ' total)' + C.reset + '\n');
@@ -479,7 +459,6 @@ async function codeCommand(args) {
         console.log(skillResult.output || 'No output');
         console.log('');
 
-        // If skill needs AI follow-up, feed it to the conversation
         if (skillResult.needsAI && skillResult.prompt) {
           console.log(C.dim + 'Feeding to Stew AI...' + C.reset + '\n');
           await processInput(skillResult.prompt);
@@ -503,7 +482,6 @@ async function codeCommand(args) {
         console.log((deleted.success ? C.green : C.red) + deleted.output + C.reset + '\n');
         break;
 
-      /* === AGENT MODE === */
       case 'agent':
         if (!args) { console.log(C.red + 'Usage: /agent <task description>' + C.reset); console.log(C.dim + 'Example: /agent fix all TypeScript errors' + C.reset + '\n'); break; }
         var { runAgent } = require('../utils/agent-engine');
@@ -519,7 +497,6 @@ async function codeCommand(args) {
         await runMarathon(client, marathonGoal, cwd, { maxHours: marathonHours });
         break;
 
-      /* === SESSION === */
       case 'save':
         var sessionName = args || ('session-' + Date.now());
         saveSession(sessionName, state.messages, { model: state.model, persona: state.persona });
@@ -549,7 +526,6 @@ async function codeCommand(args) {
         console.log('');
         break;
 
-      /* === GIT === */
       case 'git':
         if (!git.isGitRepo(cwd)) { console.log(C.red + 'Not a git repo' + C.reset + '\n'); break; }
         var subCmd = parts[1] ? parts[1].toLowerCase() : 'status';
@@ -579,7 +555,6 @@ async function codeCommand(args) {
         console.log('');
         break;
 
-      /* === SHELL === */
       case 'run': case 'exec': case '$':
         if (!args) { console.log(C.red + 'Usage: /run <command>' + C.reset + '\n'); break; }
         console.log(C.dim + '$ ' + args + C.reset);
@@ -649,7 +624,6 @@ async function codeCommand(args) {
         break;
 
       default:
-        // Check if it matches a skill name
         var skillCheck = runSkill(cmd, parts.slice(1), cwd);
         if (skillCheck.success || skillCheck.output !== ('Skill not found: ' + cmd + '. Use /skills to see available skills or /forge to create one.')) {
           console.log(skillCheck.output + '\n');

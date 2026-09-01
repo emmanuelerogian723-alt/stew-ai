@@ -10,18 +10,12 @@ declare module 'stew-ai' {
     webSearch?: boolean;
     fusionMode?: boolean;
     conversationId?: string;
-    /** Model to use for streaming */
     model?: string;
-    /** System prompt for streaming */
     system?: string;
-    /** Previous messages for conversation context */
     history?: Array<{ role: string; content: string }>;
-    /** Temperature (0-2) */
     temperature?: number;
     maxTokens?: number;
-    /** Called for each token chunk during streaming */
     onToken?: (delta: string) => void;
-    /** Called when streaming completes */
     onDone?: (fullText: string, data: any) => void;
   }
 
@@ -86,9 +80,7 @@ declare module 'stew-ai' {
     constructor(options: StewOptions);
     chat: {
       send(message: string, options?: ChatOptions): Promise<ChatResponse>;
-      /** Stream a chat response with real-time token callbacks */
       stream(message: string, options?: ChatOptions): Promise<string>;
-      /** OpenAI-compatible chat completions */
       completion(
         messages: Array<{ role: string; content: string }>,
         options?: ChatOptions & { stream?: boolean }

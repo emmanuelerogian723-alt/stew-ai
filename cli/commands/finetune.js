@@ -26,7 +26,6 @@ async function finetuneCommand(args) {
 
   const stew = new Stew({ apiKey });
 
-  // stew finetune (no args) -> show current settings
   if (!args._.length && !args.options.persona) {
     try {
       const result = await stew.finetune.get();
@@ -44,7 +43,6 @@ async function finetuneCommand(args) {
     return;
   }
 
-  // stew finetune --persona doctor --instructions "..."
   const options = {
     persona: args.options.persona || 'general',
     customInstructions: args.options.instructions || null,

@@ -6,8 +6,9 @@ const { getApiKey } = require('./utils/config');
 
 const { chatCommand } = require('./commands/chat');
 const { codeCommand } = require('./commands/code');
-const { agentCommand } = require('./commands/agent');
 const { marathonCommand } = require('./commands/marathon');
+const { scrapeCommand, crawlCommand } = require('./commands/scrape');
+const { apiCommand } = require('./commands/api');
 const { searchCommand } = require('./commands/search');
 const { skillsCommand } = require('./commands/skills');
 const { docCommand } = require('./commands/doc');
@@ -17,9 +18,12 @@ const { authCommand } = require('./commands/auth');
 
 const COMMANDS = {
   code: codeCommand,
-  agent: agentCommand,
-  a: agentCommand,
   marathon: marathonCommand,
+  scrape: scrapeCommand,
+  crawl: crawlCommand,
+  api: apiCommand,
+  curl: apiCommand,
+  http: apiCommand,
   chat: chatCommand,
   ask: chatCommand,
   search: searchCommand,
@@ -68,7 +72,7 @@ async function main() {
 
   var args = parseArgs(restArgs);
 
-  var protectedCommands = ['chat', 'ask', 'search', 'doc', 'document', 'finetune', 'ft', 'whoami', 'register', 'code', 'agent', 'a', 'marathon'];
+  var protectedCommands = ['chat', 'ask', 'search', 'doc', 'document', 'finetune', 'ft', 'whoami', 'register', 'code', 'agent', 'a', 'marathon', 'scrape', 'crawl', 'api', 'curl', 'http', 'agent', 'a'];
   if (protectedCommands.indexOf(command) !== -1 && command !== 'register') {
     var apiKey = getApiKey();
     if (!apiKey && !process.env.STEW_API_KEY) {
@@ -95,6 +99,9 @@ function showHelp() {
   console.log('  ' + dim('(or just run "stew" with no command)'));
   console.log('  ' + 'agent <task>'.padEnd(35) + cyan('Autonomous multi-step task execution'));
   console.log('  ' + 'marathon <goal>'.padEnd(35) + cyan('Run for HOURS — self re-planning, checkpointed'));
+  console.log('  ' + 'scrape <url>'.padEnd(35) + cyan('Scrape a URL — extract text, links, metadata'));
+  console.log('  ' + 'crawl <url> [--depth N]'.padEnd(35) + cyan('Crawl a website up to N levels deep'));
+  console.log('  ' + 'api <METHOD> <url>'.padEnd(35) + cyan('Call any REST/GraphQL API'));
   console.log('');
   console.log(bold('Commands') + ':');
   console.log('  ' + 'chat <message>'.padEnd(35) + 'Chat with S.T.E.W AI');

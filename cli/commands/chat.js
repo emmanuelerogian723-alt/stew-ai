@@ -18,7 +18,6 @@ async function chatCommand(args) {
   const rawOutput = args.flags.raw;
   const persona = args.options.persona;
 
-  // Read stdin if piped
   let context = '';
   if (!process.stdin.isTTY) {
     const chunks = [];

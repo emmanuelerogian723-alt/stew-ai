@@ -1,11 +1,3 @@
-/**
- * Stew Code Skill Forge — Auto-generates reusable skills when the agent
- * encounters a task it can't handle. Skills are saved to ~/.stew/skills/
- * and can be reused, shared, and composed.
- *
- * This is Stew Code's killer differentiator — no other coding agent
- * creates skills on the fly.
- */
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -13,12 +5,6 @@ const { execSync } = require('child_process');
 
 const SKILLS_DIR = path.join(os.homedir(), '.stew', 'skills');
 const BUILTIN_SKILLS_DIR = path.join(os.homedir(), '.stew', 'builtin-skills');
-
-/* ============================================================
- * BUILT-IN SKILL LIBRARY (20+ skills, zero dependency)
- * Each skill is a JS function that receives { args, cwd, state }
- * and returns { output, files, success }
- * ============================================================ */
 
 const BUILTIN_SKILLS = {
   scaffold: {
@@ -117,7 +103,6 @@ const BUILTIN_SKILLS = {
       var testFile = filepath.replace(ext, '.test' + ext);
       var testPath = path.resolve(cwd, testFile);
 
-      // Extract function names
       var funcs = [];
       if (ext === '.js' || ext === '.ts' || ext === '.jsx' || ext === '.ts') {
         var re = /(?:export\s+)?(?:async\s+)?function\s+(\w+)/g;
@@ -249,14 +234,11 @@ const BUILTIN_SKILLS = {
         if (['.js', '.ts', '.py', '.jsx', '.tsx'].indexOf(ext) === -1) return;
         try {
           var content = fs.readFileSync(path.join(cwd, f), 'utf8');
-          // Match process.env.XXX
           var re = /process\.env\.(\w+)/g;
           var m;
           while ((m = re.exec(content)) !== null) envVars.add(m[1]);
-          // Match os.environ or os.getenv
           re = /os\.(?:environ|getenv)\(?['"](\w+)/g;
           while ((m = re.exec(content)) !== null) envVars.add(m[1]);
-          // Match os.getenv("X")
           re = /os\.getenv\(['"](\w+)['"]\)/g;
           while ((m = re.exec(content)) !== null) envVars.add(m[1]);
         } catch (e) {}
@@ -334,7 +316,6 @@ const BUILTIN_SKILLS = {
           }
           if (count === 0) result += 'No vulnerabilities found.\n';
 
-          // Check outdated
           try {
             var outdated = execSync('npm outdated --json 2>/dev/null || true', { cwd, encoding: 'utf8', timeout: 15000 });
             var out = JSON.parse(outdated || '{}');
@@ -380,7 +361,6 @@ const BUILTIN_SKILLS = {
       var lines = content.split('\n');
       var result = filepath + ' (' + lines.length + ' lines)\n\n';
 
-      // Extract structure
       var funcs = [];
       var classes = [];
       var imports = [];
@@ -449,7 +429,6 @@ const BUILTIN_SKILLS = {
         } catch (e) {}
       });
 
-      // Check .env in git
       var gitignorePath = path.join(cwd, '.gitignore');
       if (fs.existsSync(path.join(cwd, '.env')) && fs.existsSync(gitignorePath)) {
         var gi = fs.readFileSync(gitignorePath, 'utf8');
@@ -609,7 +588,6 @@ const BUILTIN_SKILLS = {
         }
       });
 
-      // Clean temp files
       var patterns = ['*.log', '*.pyc', '*.pyo', '.DS_Store', 'Thumbs.db'];
       patterns.forEach(function(p) {
         try {
@@ -718,19 +696,12 @@ const BUILTIN_SKILLS = {
   },
 };
 
-/* ============================================================
- * SKILL FORGE — Auto-generate skills via AI
- * ============================================================ */
-
 function ensureSkillsDir() {
   if (!fs.existsSync(SKILLS_DIR)) {
     fs.mkdirSync(SKILLS_DIR, { recursive: true });
   }
 }
 
-/**
- * List all available skills (builtin + custom).
- */
 function listSkills() {
   ensureSkillsDir();
   var builtin = Object.keys(BUILTIN_SKILLS).map(function(name) {
@@ -760,16 +731,11 @@ function listSkills() {
   return { builtin: builtin, custom: custom, total: builtin.length + custom.length };
 }
 
-/**
- * Run a skill by name.
- */
 function runSkill(name, args, cwd) {
-  // Check builtin first
   if (BUILTIN_SKILLS[name]) {
     return BUILTIN_SKILLS[name].run(args, cwd);
   }
 
-  // Check custom skills
   ensureSkillsDir();
   var skillPath = path.join(SKILLS_DIR, name + '.js');
   if (fs.existsSync(skillPath)) {
@@ -787,10 +753,6 @@ function runSkill(name, args, cwd) {
   return { output: 'Skill not found: ' + name + '. Use /skills to see available skills or /forge to create one.', success: false };
 }
 
-/**
- * Generate a skill from a description using AI.
- * Returns the skill code and saves it.
- */
 function generateSkillCode(skillName, description, language) {
   language = language || 'javascript';
   var skillCode = '/**\n';
@@ -819,9 +781,6 @@ function generateSkillCode(skillName, description, language) {
   return skillCode;
 }
 
-/**
- * Forge a new skill — create and save it.
- */
 function forgeSkill(skillName, description) {
   ensureSkillsDir();
   var code = generateSkillCode(skillName, description);
@@ -834,9 +793,6 @@ function forgeSkill(skillName, description) {
   };
 }
 
-/**
- * Delete a custom skill.
- */
 function deleteSkill(name) {
   var skillPath = path.join(SKILLS_DIR, name + '.js');
   if (fs.existsSync(skillPath)) {

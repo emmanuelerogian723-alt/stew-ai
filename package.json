@@ -1,12 +1,11 @@
 {
   "name": "stew-ai",
-  "version": "2.1.0",
-  "description": "Stew Code \u2014 The Ultimate Terminal Coding Agent. Skill Forge, Marathon Mode (runs for hours, checkpointed), Agent Mode, 16+ built-in skills, its own mascot, 9 AI models, 12 personas. Zero dependencies.",
+  "version": "2.2.0",
+  "description": "Stew Code \u2014 Terminal coding agent. Skill Forge, Marathon Mode, Web Scraper, API Caller, 16+ skills, mascot. Zero deps.",
   "main": "index.js",
   "bin": {
     "stew": "cli/index.js"
   },
-  "types": "types/index.d.ts",
   "scripts": {
     "test": "node -e \"const S=require('./index.js'); console.log('Stew Code loaded:', Object.keys(new S({apiKey:'test'})))\""
   },
@@ -19,35 +18,16 @@
     "stew",
     "stew-code",
     "code-agent",
-    "coding-agent",
     "cli",
     "terminal",
     "repl",
     "africa",
     "nigeria",
-    "claude-code",
-    "opencode",
-    "kilo-code",
-    "glama",
     "skill-forge",
-    "autonomous-agent",
-    "code-generation",
-    "web-search",
-    "document-generation",
-    "code-execution",
-    "mistral",
-    "groq",
-    "nvidia",
-    "openrouter",
-    "huggingface",
-    "scaffolding",
-    "testing",
-    "docker",
-    "ci-cd",
-    "security-audit",
-    "refactoring",
-    "developer-tools",
-    "devtools"
+    "web-scraper",
+    "api-caller",
+    "curl",
+    "autonomous-agent"
   ],
   "author": "MUTYINT Nigeria",
   "license": "MIT",
@@ -60,7 +40,6 @@
     "index.js",
     "lib/",
     "cli/",
-    "types/",
     "README.md"
   ]
 }

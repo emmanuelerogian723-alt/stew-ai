@@ -1,12 +1,3 @@
-/**
- * Stew — the mascot. A steaming pot character that gives Stew Code its
- * own visual identity in the terminal (ANSI art, since real terminals
- * can't render 3D models — but Stew feels more alive than any competitor's
- * plain text banner).
- *
- * States: idle, thinking, working, success, error, sleeping
- */
-
 var C = {
   reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m',
   red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
@@ -16,9 +7,6 @@ var C = {
   lightorange: '\x1b[38;5;215m', steam: '\x1b[38;5;250m',
 };
 
-/**
- * Idle Stew — calm steam, resting.
- */
 function idle() {
   return '\n' +
     '        ' + C.steam + '. . .' + C.reset + '\n' +
@@ -31,9 +19,6 @@ function idle() {
     '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
 }
 
-/**
- * Thinking — squiggly steam, eyes up.
- */
 function thinking() {
   return '\n' +
     '       ' + C.steam + '~ ? ~' + C.reset + '\n' +
@@ -45,9 +30,6 @@ function thinking() {
     '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
 }
 
-/**
- * Working — bubbling hard, focused eyes, sleeves up energy.
- */
 function working(task) {
   return '\n' +
     '      ' + C.steam + ') ( ) (' + C.reset + '\n' +
@@ -59,9 +41,6 @@ function working(task) {
     '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
 }
 
-/**
- * Success — sparkle eyes, happy.
- */
 function success() {
   return '\n' +
     '       ' + C.yellow + '✦ ✧ ✦' + C.reset + '\n' +
@@ -73,9 +52,6 @@ function success() {
     '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
 }
 
-/**
- * Error — droopy, oops face.
- */
 function error() {
   return '\n' +
     '       ' + C.red + '‼' + C.reset + '\n' +
@@ -87,9 +63,6 @@ function error() {
     '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
 }
 
-/**
- * Marathon — Stew wearing a headband, in it for the long haul.
- */
 function marathon(hours) {
   return '\n' +
     '     ' + C.cyan + '═══════' + C.reset + '\n' +
@@ -100,9 +73,6 @@ function marathon(hours) {
     '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
 }
 
-/**
- * Tiny inline mascot for status lines (single char/emoji fallback).
- */
 function mini(state) {
   var faces = {
     idle: C.orange + '(◕‿◕)' + C.reset,
@@ -114,9 +84,6 @@ function mini(state) {
   return faces[state] || faces.idle;
 }
 
-/**
- * Full boot banner combining mascot + wordmark.
- */
 function bootBanner() {
   var art = idle();
   var wordmark =

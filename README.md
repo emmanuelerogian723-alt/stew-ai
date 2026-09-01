@@ -2,52 +2,21 @@
 
 **The Ultimate Terminal Coding Agent** — the only coding agent that forges its own skills, runs for hours unattended, and has a face. Zero dependencies.
 
-[![npm version](https://img.shields.io/badge/version-2.1.0-blue)](https://www.npmjs.com/package/stew-ai)
+[![npm version](https://img.shields.io/badge/version-2.2.0-blue)](https://www.npmjs.com/package/stew-ai)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
-## Stew Code vs Claude Code vs OpenCode
+## What's New in v2.2 — Web Scraper + API Caller + Marathon Mode + Skill Forge
 
-| Capability | Stew Code | Claude Code | OpenCode |
-|---|---|---|---|
-| Interactive terminal REPL | Yes | Yes | Yes |
-| Self-creates new skills for unknown tasks (Skill Forge) | **Yes — unique** | No | No |
-| Runs unattended for hours, checkpointed + resumable (Marathon Mode) | **Yes — unique** | Auto/yolo mode, no checkpoint/resume | No |
-| Built-in mascot / visual identity | **Yes** | No (plain text) | No |
-| Built-in skill library (scaffold, docker, ci, security, etc.) | 16+ built-in | Via MCP/plugins only | Via plugins only |
-| Multi-model support | 9 models, 6 providers | Claude only | 75+ models |
-| Cost | Free tier (1,500 calls/mo) | Paid (Claude subscription/API) | Free (bring your own model key) |
-| Dependencies | **Zero** | N/A (hosted CLI) | Several |
-| Package size | 48KB | N/A | Larger |
-| Git integration | Yes | Yes (native) | Yes |
-| LSP integration | No | Yes | Yes |
-| Subagents / hooks | Via Skill Forge | Yes (native) | No |
-| MCP support | Planned | Yes | Yes |
+*Marathon Mode* — run autonomously for HOURS, not a fixed step list. Re-plans continuously toward the goal, checkpoints to disk every iteration, and is fully resumable. Kill the terminal, come back tomorrow — `stew marathon --resume <id>` picks up exactly where it left off.
 
-Stew Code's edge isn't matching every feature — it's the two things nobody else does: it builds new capabilities for itself on the fly, and it can be told to go work for 6 hours and actually still be running (and resumable) when you check back.
+*Skill Forge* — when Stew encounters a task it can't do, it writes a new skill for itself and starts using it immediately. No MCP plugins, no marketplace — just self-improvement.
 
-## What's New in v2.1 — Marathon Mode + Skill Forge + Mascot
+*Web Scraper* — `stew scrape <url>` fetches any URL, strips HTML, extracts clean text + links + metadata. `stew crawl <url> --depth 3` crawls entire sites. Also available as `/scrape` and `/crawl` in the REPL, and as actions in Agent/Marathon mode.
 
-**Marathon Mode** — tell Stew a big goal and walk away. It re-plans continuously, checkpoints to disk every iteration, self-corrects on failures, and only stops when the goal is verifiably complete, the time budget runs out, or you ask it to stop. Kill the process, come back later, `--resume` the exact session.
+*API Caller* — `stew api GET https://api.example.com` calls any REST or GraphQL API. Supports custom headers, JSON bodies, query params, bearer auth. Also `/api` in the REPL and as an action in Agent/Marathon mode. Built-in `curl`-style flag parsing (`-H`, `-d`, `-q`).
 
-```bash
-stew marathon "build a full REST API with auth, tests, and docs" --hours 6
-stew marathon --list
-stew marathon --resume build-a-full-rest-api-mtj123
-stew marathon --stop build-a-full-rest-api-mtj123
-```
-
-**Skill Forge** — when Stew Code hits a task it doesn't know how to do, it writes itself a new skill instead of giving up.
-
-```bash
-# inside stew code
-/forge deploy-fly "deploy this project to Fly.io"
-/skill deploy-fly
-```
-
-**16 built-in skills** — scaffold, test, docker, ci, env, gitignore, deps, explain, security, size, translate, refactor, document, clean, loc, format, checklist. Run any with `/skill <name>`.
-
-**A mascot** — Stew has a face (ANSI art, since a real terminal can't render 3D) that reacts to what's happening: idle, thinking, working, success, error, and a headband when it's in marathon mode.
+*Mascot* — Stew now has a face. ANSI art that reacts: thinking, working, success, error, and marathon states.
 
 ## Also included
 
@@ -245,37 +214,6 @@ const result = await stew.executeCode('print("Hello from Stew!")');
 const agents = await stew.runAgents('Research top 10 African startups', { numAgents: 5 });
 ```
 
-## Available Models
-
-| Model | Description |
-|-------|-------------|
-| `stew-default` | Auto-select best model (recommended) |
-| `stew-fast` | Groq — fastest inference |
-| `stew-mistral` | Mistral Large |
-| `stew-nvidia` | NVIDIA NIM |
-| `stew-openrouter` | OpenRouter (multi-model) |
-| `stew-hf` | HuggingFace |
-| `stew-openai` | OpenAI GPT-4o |
-| `gpt-4o` | GPT-4o |
-| `gpt-4o-mini` | GPT-4o mini (cheapest) |
-
-## Personas
-
-`default` · `business` · `doctor` · `lawyer` · `teacher` · `developer` · `therapist` · `coach` · `nutritionist` · `financial_advisor` · `researcher` · `creative`
-
-## Project Configuration
-
-Create a `STEW.md` or `.stew/rules` file in your project root to give Stew custom instructions:
-
-```markdown
-# Project Rules
-
-- Use TypeScript strict mode
-- Follow the Airbnb ESLint config
-- All API endpoints must have input validation
-- Use camelCase for variables, PascalCase for types
-```
-
 ## Authentication
 
 Get a free API key at [https://stew-agent.onrender.com](https://stew-agent.onrender.com):
@@ -285,52 +223,3 @@ stew login your_api_key_here
 ```
 
 Free tier: 1,500 API calls/month. No credit card required.
-
-## Piping & Scripting
-
-```bash
-# Pipe content into Stew
-cat error.log | stew chat "What's causing this error?"
-
-# Use in scripts
-echo $(stew chat "Generate a git commit message for: added login page" --raw)
-
-# JSON output for programmatic use
-stew search "Nigerian GDP 2026" --json | jq '.results[0]'
-```
-
-## Full Comparison with Other Code Agents
-
-| Feature | Stew Code | Claude Code | OpenCode | Kilo Code |
-|---------|-----------|-------------|----------|-----------|
-| Price | Free tier | $20/mo | Free (BYOK) | Free (BYOK) |
-| Dependencies | Zero | TypeScript | Go | TypeScript |
-| Models | 9 models | Claude only | 75+ models | 500+ models |
-| Skill Forge (self-creates skills) | ✅ Unique | ❌ | ❌ | ❌ |
-| Marathon Mode (hours, resumable) | ✅ Unique | Auto/yolo, no resume | ❌ | ❌ |
-| Mascot / visual identity | ✅ | ❌ | ❌ | ❌ |
-| Streaming | ✅ SSE | ✅ | ✅ | ✅ |
-| File ops | ✅ | ✅ | ✅ | ✅ |
-| Git integration | ✅ | ✅ | ✅ | ✅ |
-| Shell execution | ✅ | ✅ | ✅ | ✅ |
-| Session persistence | ✅ | ✅ | ✅ SQLite | ✅ |
-| Plan mode | ✅ | ✅ | ✅ | ✅ |
-| Undo | ✅ | ✅ | ✅ | ✅ |
-| @file refs | ✅ | ✅ | ✅ | ✅ |
-| Web search | ✅ Built-in | ❌ | ❌ | ❌ |
-| Personas | ✅ 12 | ❌ | ❌ | ❌ |
-| Document gen | ✅ PDF/DOCX | ❌ | ❌ | ❌ |
-| Image gen | ✅ | ❌ | ❌ | ❌ |
-| LSP integration | ❌ | ✅ | ✅ | ❌ |
-| Africa-focused | ✅ | ❌ | ❌ | ❌ |
-
-## License
-
-MIT © MUTYINT Nigeria
-
-## Links
-
-- API Docs: https://stew-agent.onrender.com/docs
-- Get a free key: https://stew-agent.onrender.com
-- GitHub: https://github.com/emmanuelerogian723-alt/Stew-agent
-- Telegram: @StewAgent_bot

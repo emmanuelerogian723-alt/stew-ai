@@ -1,4 +1,3 @@
-// ANSI color codes — zero dependency
 const C = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',

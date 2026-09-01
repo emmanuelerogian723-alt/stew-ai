@@ -17,7 +17,6 @@ function getConfig() {
       return JSON.parse(fs.readFileSync(configFile, 'utf8'));
     }
   } catch (e) {
-    // Corrupted config
   }
   return { apiKey: '' };
 }
@@ -28,7 +27,6 @@ function saveConfig(config) {
 }
 
 function getApiKey() {
-  // Priority: env var > config file
   if (process.env.STEW_API_KEY) return process.env.STEW_API_KEY;
   const config = getConfig();
   return config.apiKey || '';

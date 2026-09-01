@@ -1,12 +1,3 @@
-/**
- * Stew Code Marathon Mode — run for hours, not minutes.
- * Usage:
- *   stew marathon "build a full REST API with auth and tests"
- *   stew marathon "..." --hours 6
- *   stew marathon --resume <session-id>
- *   stew marathon --list
- *   stew marathon --stop <session-id>
- */
 const { getApiKey } = require('../utils/config');
 const { StewClient } = require('../../lib/client');
 const { runMarathon, listCheckpoints, requestStop } = require('../utils/marathon');
