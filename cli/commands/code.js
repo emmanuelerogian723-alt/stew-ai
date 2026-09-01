@@ -20,6 +20,7 @@ const { readFileSync, listFiles, projectContext, diff, UndoStack } = require('..
 const git = require('../utils/git');
 const { saveSession, loadSession, listSessions, deleteSession } = require('../utils/session');
 const { BUILTIN_SKILLS, listSkills, runSkill, forgeSkill, deleteSkill } = require('../utils/skill-forge');
+const mascot = require('../utils/mascot');
 
 var C = {
   reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', italic: '\x1b[3m',
@@ -28,11 +29,7 @@ var C = {
   gray: '\x1b[90m', white: '\x1b[37m',
 };
 
-var BANNER = '\n' +
-  C.cyan + C.bold + '  ___  ___ ___ ___ ___      ' + C.reset + '\n' +
-  C.cyan + C.bold + ' / __|/ __| __/ __| _ \\     ' + C.reset + C.dim + 'Code' + C.reset + '\n' +
-  C.cyan + C.bold + ' \\__ \\ (__| _| (__|   /     ' + C.reset + C.dim + 'The Ultimate Terminal Agent' + C.reset + '\n' +
-  C.cyan + C.bold + ' |___/\\___|___\\___|_|_\\     ' + C.reset + C.dim + 'v2.0 · Zero Deps · Free' + C.reset + '\n';
+// BANNER now comes from mascot.bootBanner() — Stew has a face.
 
 var MODELS = [
   ['stew-default', 'Auto-select best model'],
@@ -66,6 +63,7 @@ var SLASH_COMMANDS = [
   ['/forge <name> <desc>', 'Create a new skill (Skill Forge)'],
   ['/unforge <name>', 'Delete a custom skill'],
   ['/agent <task>', 'Autonomous agent mode'],
+  ['/marathon <goal> [--hours N]', 'Run for HOURS — checkpointed, self re-planning'],
   ['/save <name>', 'Save session'],
   ['/load <name>', 'Load session'],
   ['/sessions', 'List saved sessions'],
@@ -161,7 +159,7 @@ async function codeCommand(args) {
   state.messages.push({ role: 'system', content: buildSystemPrompt() });
 
   // Print banner
-  console.log(BANNER);
+  console.log(mascot.bootBanner());
 
   var skillsList = listSkills();
   console.log(C.dim + '  Model: ' + C.reset + C.bold + state.model + C.reset +
@@ -294,6 +292,7 @@ async function codeCommand(args) {
 
     } catch (err) {
       process.stdout.write('\r' + ' '.repeat(50) + '\r');
+      console.log(mascot.error());
       console.log(C.red + 'Error: ' + (err.message || err) + C.reset);
       if (err.suggestion) console.log(C.dim + 'Hint: ' + err.suggestion + C.reset);
       console.log('');
@@ -509,6 +508,15 @@ async function codeCommand(args) {
         if (!args) { console.log(C.red + 'Usage: /agent <task description>' + C.reset); console.log(C.dim + 'Example: /agent fix all TypeScript errors' + C.reset + '\n'); break; }
         var { runAgent } = require('../utils/agent-engine');
         await runAgent(client, args, cwd, { autoApply: !state.planMode });
+        break;
+
+      case 'marathon':
+        if (!args) { console.log(C.red + 'Usage: /marathon <goal> [--hours N]' + C.reset); console.log(C.dim + 'Example: /marathon build a full REST API with auth and tests --hours 6' + C.reset + '\n'); break; }
+        var marathonArgs = args.split(/\s+--hours\s+/);
+        var marathonGoal = marathonArgs[0];
+        var marathonHours = marathonArgs[1] ? parseFloat(marathonArgs[1]) : 4;
+        var { runMarathon } = require('../utils/marathon');
+        await runMarathon(client, marathonGoal, cwd, { maxHours: marathonHours });
         break;
 
       /* === SESSION === */

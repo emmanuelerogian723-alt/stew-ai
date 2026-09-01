@@ -7,6 +7,7 @@ const { getApiKey } = require('./utils/config');
 const { chatCommand } = require('./commands/chat');
 const { codeCommand } = require('./commands/code');
 const { agentCommand } = require('./commands/agent');
+const { marathonCommand } = require('./commands/marathon');
 const { searchCommand } = require('./commands/search');
 const { skillsCommand } = require('./commands/skills');
 const { docCommand } = require('./commands/doc');
@@ -18,6 +19,7 @@ const COMMANDS = {
   code: codeCommand,
   agent: agentCommand,
   a: agentCommand,
+  marathon: marathonCommand,
   chat: chatCommand,
   ask: chatCommand,
   search: searchCommand,
@@ -66,7 +68,7 @@ async function main() {
 
   var args = parseArgs(restArgs);
 
-  var protectedCommands = ['chat', 'ask', 'search', 'doc', 'document', 'finetune', 'ft', 'whoami', 'register', 'code', 'agent', 'a'];
+  var protectedCommands = ['chat', 'ask', 'search', 'doc', 'document', 'finetune', 'ft', 'whoami', 'register', 'code', 'agent', 'a', 'marathon'];
   if (protectedCommands.indexOf(command) !== -1 && command !== 'register') {
     var apiKey = getApiKey();
     if (!apiKey && !process.env.STEW_API_KEY) {
@@ -92,6 +94,7 @@ function showHelp() {
   console.log('  ' + 'code'.padEnd(35) + cyan('Interactive AI coding agent (REPL)'));
   console.log('  ' + dim('(or just run "stew" with no command)'));
   console.log('  ' + 'agent <task>'.padEnd(35) + cyan('Autonomous multi-step task execution'));
+  console.log('  ' + 'marathon <goal>'.padEnd(35) + cyan('Run for HOURS — self re-planning, checkpointed'));
   console.log('');
   console.log(bold('Commands') + ':');
   console.log('  ' + 'chat <message>'.padEnd(35) + 'Chat with S.T.E.W AI');

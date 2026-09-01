@@ -1,10 +1,10 @@
 {
   "name": "stew-ai",
-  "version": "2.0.0",
-  "description": "Stew Code — The Ultimate Terminal Coding Agent. Skill Forge, autonomous agent mode, 16+ built-in skills, 9 AI models, 12 personas, streaming REPL, file ops, git, sessions. Zero dependencies.",
+  "version": "2.1.0",
+  "description": "Stew Code \u2014 The Ultimate Terminal Coding Agent. Skill Forge, Marathon Mode (runs for hours, checkpointed), Agent Mode, 16+ built-in skills, its own mascot, 9 AI models, 12 personas. Zero dependencies.",
   "main": "index.js",
   "bin": {
-    "stew": "./cli/index.js"
+    "stew": "cli/index.js"
   },
   "types": "types/index.d.ts",
   "scripts": {
@@ -14,21 +14,47 @@
     "node": ">=18"
   },
   "keywords": [
-    "ai", "agent", "stew", "stew-code", "code-agent", "coding-agent",
-    "cli", "terminal", "repl", "africa", "nigeria",
-    "claude-code", "opencode", "kilo-code", "glama",
-    "skill-forge", "autonomous-agent", "code-generation",
-    "web-search", "document-generation", "code-execution",
-    "mistral", "groq", "nvidia", "openrouter", "huggingface",
-    "scaffolding", "testing", "docker", "ci-cd", "security-audit",
-    "refactoring", "developer-tools", "devtools"
+    "ai",
+    "agent",
+    "stew",
+    "stew-code",
+    "code-agent",
+    "coding-agent",
+    "cli",
+    "terminal",
+    "repl",
+    "africa",
+    "nigeria",
+    "claude-code",
+    "opencode",
+    "kilo-code",
+    "glama",
+    "skill-forge",
+    "autonomous-agent",
+    "code-generation",
+    "web-search",
+    "document-generation",
+    "code-execution",
+    "mistral",
+    "groq",
+    "nvidia",
+    "openrouter",
+    "huggingface",
+    "scaffolding",
+    "testing",
+    "docker",
+    "ci-cd",
+    "security-audit",
+    "refactoring",
+    "developer-tools",
+    "devtools"
   ],
   "author": "MUTYINT Nigeria",
   "license": "MIT",
   "homepage": "https://stew-agent.onrender.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/emmanuelerogian723-alt/stew-ai"
+    "url": "git+https://github.com/emmanuelerogian723-alt/stew-ai.git"
   },
   "files": [
     "index.js",
