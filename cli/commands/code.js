@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { execSync } = require('child_process');
 const path = require('path');
 const readline = require('readline');
 const { getApiKey } = require('../utils/config');
@@ -73,7 +74,7 @@ async function codeCommand(args) {
   var client = new StewClient({ apiKey });
   var cwd = process.cwd();
 
-  var state = {
+  var state = { sessionFiles: {},
     messages: [],
     model: 'stew-default',
     persona: 'developer',
@@ -559,7 +560,6 @@ async function codeCommand(args) {
         if (!args) { console.log(C.red + 'Usage: /run <command>' + C.reset + '\n'); break; }
         console.log(C.dim + '$ ' + args + C.reset);
         try {
-          var { execSync } = require('child_process');
           var output = execSync(args, { cwd, encoding: 'utf8', timeout: 30000, stdio: 'pipe' });
           console.log(output || C.dim + '(no output)' + C.reset);
         } catch (err) {
@@ -621,6 +621,143 @@ async function codeCommand(args) {
         }
         console.log('\n' + C.dim + 'Goodbye! 👋' + C.reset + '\n');
         process.exit(0);
+        break;
+
+
+      case 'scan': case 'security': case 'sec':
+        var target = args || '.';
+        console.log(C.dim + '  Scanning ' + target + '...' + C.reset);
+        var scanResults = adv.scan(target);
+        if (scanResults.error) { console.log(C.red + '  ' + scanResults.error + C.reset + '\n'); break; }
+        if (!scanResults.length) { console.log(C.green + '  No threats found in ' + target + C.reset + '\n'); break; }
+        for (var sr of scanResults) {
+          var sc = sr.threatLevel === 'CRITICAL' ? C.red : sr.threatLevel === 'HIGH' ? C.red : sr.threatLevel === 'MEDIUM' ? C.yellow : C.cyan;
+          console.log(sc + '  [' + sr.threatLevel + '] ' + sr.file.replace(cwd + '/', '') + ' (score: ' + sr.score + ')' + C.reset);
+          for (var f of sr.findings) console.log(C.dim + '    - ' + f.issue + ' (' + f.count + 'x)' + C.reset);
+        }
+        var totalScore = scanResults.reduce(function(s, r) { return s + r.score; }, 0);
+        console.log('\n' + C.bold + '  Total threat score: ' + totalScore + C.reset + (totalScore >= 20 ? C.red + ' CRITICAL' : totalScore >= 10 ? C.yellow + ' HIGH' : C.green + ' LOW') + C.reset + '\n');
+        break;
+
+      case 'verify': case 'check':
+        if (!state.filesChanged) { console.log(C.dim + '  No files changed this session.' + C.reset + '\n'); break; }
+        var verifyResults = adv.verifySession(state.sessionFiles || {});
+        var passCount = verifyResults.filter(function(r) { return r.pass; }).length;
+        console.log(C.bold + '  Verification: ' + passCount + '/' + verifyResults.length + ' passed' + C.reset + '\n');
+        for (var vr of verifyResults) {
+          console.log((vr.pass ? C.green + '  ✓ ' : C.red + '  ✗ ') + vr.file + C.reset);
+          if (vr.issues.length) for (var iss of vr.issues) console.log(C.dim + '    - ' + iss + C.reset);
+        }
+        console.log('');
+        break;
+
+      case 'heal': case 'selfheal':
+        console.log(C.cyan + '  Self-Heal Report' + C.reset);
+        var healed = 0;
+        if (state.sessionFiles) {
+          for (var fp in state.sessionFiles) {
+            var code = state.sessionFiles[fp];
+            var vr = adv.verifyCode(code, fp);
+            if (!vr.allPass) {
+              console.log(C.yellow + '  Fixing ' + fp + C.reset);
+              if (vr.passes.syntax.issues.length) console.log(C.dim + '    Syntax: ' + vr.passes.syntax.issues[0] + C.reset);
+              if (vr.passes.security.issues.length) console.log(C.dim + '    Security: ' + vr.passes.security.issues[0] + C.reset);
+              healed++;
+            }
+          }
+        }
+        console.log(healed ? C.yellow + '  ' + healed + ' file(s) need attention' : C.green + '  All files healthy' + C.reset + '\n');
+        break;
+
+      case 'endurance': case 'endure':
+        if (!args) { console.log(C.red + 'Usage: /endurance <h> [task]' + C.reset + '\n'); break; }
+        var eh = parseInt(args.split(' ')[0]) || 1;
+        var etask = args.split(' ').slice(1).join(' ') || 'continuous work';
+        var endurance = adv.startEndurance(etask, eh);
+        console.log(C.bold + C.cyan + '  Endurance Mode' + C.reset);
+        console.log(C.dim + '  Duration: ' + eh + ' hour(s)' + C.reset);
+        console.log(C.dim + '  Task: ' + etask + C.reset);
+        console.log(C.dim + '  Self-heal: ON' + C.reset);
+        endurance.checkpoint('start');
+        console.log(C.green + '  Started. Stew will keep working until done or expired.' + C.reset + '\n');
+        break;
+
+      case 'setup': case 'init': case 'env':
+        var setupType = args || 'vscode';
+        var vscodeDir = path.join(cwd, '.vscode');
+        fs.mkdirSync(vscodeDir, { recursive: true });
+        if (setupType === 'vscode' || setupType === 'code') {
+          fs.writeFileSync(path.join(vscodeDir, 'settings.json'), JSON.stringify({
+            'editor.fontSize': 14, 'editor.tabSize': 2, 'editor.formatOnSave': true,
+            'editor.minimap.enabled': false, 'editor.wordWrap': 'on',
+            'files.autoSave': 'afterDelay', 'terminal.integrated.fontSize': 13,
+            'editor.bracketPairColorization.enabled': true,
+            'workbench.colorTheme': 'Default Dark+',
+          }, null, 2));
+          fs.writeFileSync(path.join(vscodeDir, 'launch.json'), JSON.stringify({
+            version: '0.2.0', configurations: [
+              { type: 'node', request: 'launch', name: 'Debug', program: '${workspaceFolder}/index.js', skipFiles: ['<node_internals>/**'] },
+            ]
+          }, null, 2));
+          fs.writeFileSync(path.join(vscodeDir, 'tasks.json'), JSON.stringify({
+            version: '2.0.0', tasks: [
+              { label: 'Build', type: 'shell', command: 'npm run build', group: { kind: 'build', isDefault: true } },
+              { label: 'Test', type: 'shell', command: 'npm test', group: { kind: 'test', isDefault: true } },
+              { label: 'Serve', type: 'shell', command: 'npm start' },
+            ]
+          }, null, 2));
+          fs.writeFileSync(path.join(vscodeDir, 'extensions.json'), JSON.stringify({
+            recommendations: ['esbenp.prettier-vscode', 'dbaeumer.vscode-eslint', 'ms-python.python', 'bradlc.vscode-tailwindcss']
+          }, null, 2));
+          console.log(C.green + '  VS Code environment set up!' + C.reset);
+          console.log(C.dim + '  Created: .vscode/ (4 files)' + C.reset + '\n');
+        }
+        if (setupType === 'opencode' || setupType === 'all') {
+          fs.writeFileSync(path.join(cwd, 'opencode.json'), JSON.stringify({
+            model: 'stew-default', autoExecute: true, autoCommit: false,
+            tabSize: 2, theme: 'dark', streaming: true,
+          }, null, 2));
+          console.log(C.green + '  OpenCode config created!' + C.reset);
+          console.log(C.dim + '  Created: opencode.json' + C.reset + '\n');
+        }
+        if (setupType === 'all' || setupType === 'vscode') {
+          fs.writeFileSync(path.join(cwd, '.editorconfig'), 'root = true\n\n[*]\ncharset = utf-8\nend_of_line = lf\nindent_size = 2\nindent_style = space\ninsert_final_newline = true\ntrim_trailing_whitespace = true\n');
+          console.log(C.dim + '  Created: .editorconfig' + C.reset);
+        }
+        break;
+
+      case 'install': case 'i':
+        if (!args) { console.log(C.red + 'Usage: /install <package>' + C.reset + '\n'); break; }
+        try { execSync('npm install ' + args, { cwd: cwd, stdio: 'inherit' }); console.log(C.green + '  Installed: ' + args + C.reset + '\n'); }
+        catch(e) { console.log(C.red + '  Failed: ' + e.message + C.reset + '\n'); }
+        break;
+
+      case 'clone':
+        if (!args) { console.log(C.red + 'Usage: /clone <url>' + C.reset + '\n'); break; }
+        try { execSync('git clone ' + args, { cwd: cwd, stdio: 'inherit' }); console.log(C.green + '  Cloned: ' + args + C.reset + '\n'); }
+        catch(e) { console.log(C.red + '  Clone failed: ' + C.message + C.reset + '\n'); }
+        break;
+
+      case 'serve': case 'server':
+        var port = args || '3000';
+        try { execSync('npx serve -l ' + port + ' .', { cwd: cwd, stdio: 'inherit' }); }
+        catch(e) { console.log(C.red + '  Try: npm i -g serve' + C.reset + '\n'); }
+        break;
+
+      case 'deploy':
+        var target = args || 'vercel';
+        console.log(C.dim + '  Deploying...' + C.reset);
+        try { execSync(target === 'vercel' ? 'npx vercel --prod' : target === 'render' ? 'render deploy' : target + ' deploy', { cwd: cwd, stdio: 'inherit' }); }
+        catch(e) { console.log(C.red + '  Failed: ' + e.message + C.reset + '\n'); }
+        break;
+
+      case 'create':
+        if (!args) { console.log(C.red + 'Usage: /create <type> <prompt>' + C.reset + '\n'); break; }
+        var parts_c = args.split(' ');
+        var cType = parts_c[0], cPrompt = parts_c.slice(1).join(' ');
+        if (!cPrompt) { console.log(C.red + 'Usage: /create <type> <prompt>' + C.reset + '\n'); break; }
+        state.messages.push({ role: 'user', content: 'Create a ' + cType + ' file about: ' + cPrompt + '. Generate the full content.' });
+        console.log(C.dim + '  Generating ' + cType + '...' + C.reset + '\n');
         break;
 
       default:

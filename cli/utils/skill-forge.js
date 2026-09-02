@@ -2,812 +2,251 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
-
 const SKILLS_DIR = path.join(os.homedir(), '.stew', 'skills');
-const BUILTIN_SKILLS_DIR = path.join(os.homedir(), '.stew', 'builtin-skills');
 
 const BUILTIN_SKILLS = {
   scaffold: {
-    name: 'scaffold',
-    description: 'Scaffold a new project (express, react, next, flask, fastapi, etc.)',
-    usage: '/skill scaffold <type> <name>',
-    languages: ['js', 'py', 'ts', 'go', 'rs'],
+    name: 'scaffold', description: 'Scaffold a project', usage: '/skill scaffold <type> <name>',
     run: function(args, cwd) {
-      var type = args[0] || 'express';
-      var name = args[1] || 'my-app';
-      var templates = {
-        express: {
-          files: {
-            'package.json': JSON.stringify({ name: name, version: '1.0.0', main: 'index.js', scripts: { start: 'node index.js', dev: 'node --watch index.js' }, dependencies: { express: '^4.18.0' } }, null, 2),
-            'index.js': "const express = require('express');\nconst app = express();\nconst PORT = process.env.PORT || 3000;\n\napp.use(express.json());\n\napp.get('/', (req, res) => res.json({ status: 'ok', service: '" + name + "' }));\n\napp.listen(PORT, () => console.log(`" + name + " running on port ${PORT}`));\n",
-            'README.md': '# ' + name + '\n\nExpress API server.\n\n```bash\nnpm install\nnpm start\n```',
-          }
-        },
-        react: {
-          files: {
-            'package.json': JSON.stringify({ name: name, version: '1.0.0', scripts: { dev: 'vite', build: 'vite build' }, dependencies: { react: '^18.2.0', 'react-dom': '^18.2.0' }, devDependencies: { vite: '^5.0.0', '@vitejs/plugin-react': '^4.0.0' } }, null, 2),
-            'index.html': '<!DOCTYPE html><html><head><title>' + name + '</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>',
-            'src/main.jsx': "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\n\nReactDOM.createRoot(document.getElementById('root')).render(<App />);\n",
-            'src/App.jsx': "import React from 'react';\n\nexport default function App() {\n  return <div><h1>" + name + "</h1><p>Built with Stew Code</p></div>;\n}\n",
-          }
-        },
-        flask: {
-          files: {
-            'requirements.txt': 'flask>=3.0\ngunicorn>=21.0',
-            'app.py': "from flask import Flask, jsonify\n\napp = Flask(__name__)\n\n@app.route('/')\ndef health():\n    return jsonify(status='ok', service='" + name + "')\n\nif __name__ == '__main__':\n    app.run(port=5000)\n",
-            'README.md': '# ' + name + '\n\nFlask API.\n\n```bash\npip install -r requirements.txt\npython app.py\n```',
-          }
-        },
-        fastapi: {
-          files: {
-            'requirements.txt': 'fastapi>=0.100\nuvicorn>=0.24',
-            'main.py': "from fastapi import FastAPI\n\napp = FastAPI(title='" + name + "')\n\n@app.get('/')\ndef health():\n    return {'status': 'ok', 'service': '" + name + "'}\n\nif __name__ == '__main__':\n    import uvicorn\n    uvicorn.run(app, port=8000)\n",
-            'README.md': '# ' + name + '\n\nFastAPI server.\n\n```bash\npip install -r requirements.txt\nuvicorn main:app --reload\n```',
-          }
-        },
-        cli: {
-          files: {
-            'package.json': JSON.stringify({ name: name, version: '1.0.0', bin: { name: './index.js' }, scripts: { start: 'node index.js' } }, null, 2),
-            'index.js': "#!/usr/bin/env node\n\nconst args = process.argv.slice(2);\nconsole.log('" + name + " CLI — built with Stew Code');\nconsole.log('Args:', args);\n",
-          }
-        },
-        static: {
-          files: {
-            'index.html': '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>' + name + '</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#0a0a0a;color:#fff}h1{font-size:3rem}</style></head><body><h1>' + name + '</h1></body></html>',
-            'style.css': '/* ' + name + ' styles */\n',
-            'script.js': '// ' + name + ' scripts\n',
-          }
-        },
+      var type = args[0] || 'express', name = args[1] || 'my-app', dir = path.join(cwd, name);
+      var T = {
+        express: { 'package.json': JSON.stringify({name,version:'1.0.0',main:'index.js',scripts:{start:'node index.js'},dependencies:{express:'^4.18.0'}},null,2), 'index.js': "const express=require('express');\nconst app=express();\napp.get('/',(r,s)=>s.json({status:'ok'}));\napp.listen(3000,()=>console.log('Running on 3000'));" },
+        react: { 'package.json': JSON.stringify({name,version:'1.0.0',scripts:{dev:'vite',build:'vite build'},dependencies:{react:'^18.2.0','react-dom':'^18.2.0'},devDependencies:{vite:'^5.0.0','@vitejs/plugin-react':'^4.0.0'}},null,2), 'index.html': '<div id="root"></div><script type="module" src="/src/main.jsx"></script>', 'src/main.jsx': "import React from'react';import ReactDOM from'react-dom/client';import App from'./App';ReactDOM.createRoot(document.getElementById('root')).render(<App/>)", 'src/App.jsx': "export default()=>(<div><h1>"+name+"</h1></div>)" },
+        flask: { 'requirements.txt': 'flask>=3.0', 'app.py': "from flask import Flask\napp=Flask(__name__)\n@app.route('/')\ndef health():return{'status':'ok'}\nif __name__=='__main__':app.run(port=5000)" },
+        fastapi: { 'requirements.txt': 'fastapi>=0.100\nuvicorn>=0.24', 'main.py': "from fastapi import FastAPI\napp=FastAPI()\n@app.get('/')\ndef health():return{'status':'ok'}" },
+        static: { 'index.html': '<!DOCTYPE html><html><head><title>'+name+'</title></head><body><h1>'+name+'</h1></body></html>', 'style.css': '', 'script.js': '' },
+        cli: { 'package.json': JSON.stringify({name,version:'1.0.0',bin:{[name]:'./index.js'}},null,2), 'index.js': "#!/usr/bin/env node\nconsole.log('"+name+" CLI')" },
+        next: { 'package.json': JSON.stringify({name,version:'1.0.0',scripts:{dev:'next dev',build:'next build'},dependencies:{next:'^14.0.0',react:'^18.2.0','react-dom':'^18.2.0'}},null,2), 'app/page.js': "export default function Page(){return <div><h1>"+name+"</h1></div> }", 'app/layout.js': "export default function RootLayout({children}){return <html><body>{children}</body></html> }" },
+        python: { 'requirements.txt': '', 'main.py': "def main():\n    print('"+name+"')\nif __name__=='__main__':\n    main()", 'README.md': '# '+name },
       };
-
-      var template = templates[type];
-      if (!template) {
-        return { output: 'Unknown type: ' + type + '. Available: ' + Object.keys(templates).join(', '), success: false };
-      }
-
-      var projectDir = path.resolve(cwd, name);
-      if (fs.existsSync(projectDir)) {
-        return { output: 'Directory already exists: ' + name, success: false };
-      }
-
-      fs.mkdirSync(projectDir, { recursive: true });
-      var created = [];
-      for (var filepath in template.files) {
-        var fullPath = path.join(projectDir, filepath);
-        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-        fs.writeFileSync(fullPath, template.files[filepath]);
-        created.push(filepath);
-      }
-
-      return {
-        output: 'Created ' + name + ' (' + type + ') with ' + created.length + ' files:\n' + created.map(function(f) { return '  + ' + f; }).join('\n') + '\n\nNext: cd ' + name + ' && npm install',
-        files: created,
-        success: true,
-      };
+      var t = T[type]; if (!t) return { success: false, output: 'Unknown type: '+type+'. Available: '+Object.keys(T).join(', ') };
+      fs.mkdirSync(dir, {recursive: true});
+      for (var f in t) { var fp = path.join(dir, f); fs.mkdirSync(path.dirname(fp), {recursive: true}); fs.writeFileSync(fp, t[f]); }
+      return { success: true, output: 'Scaffolded ' + type + ' project: ' + name + ' (' + Object.keys(t).length + ' files)' };
     }
   },
-
   test: {
-    name: 'test',
-    description: 'Generate test files for your code',
-    usage: '/skill test <filepath> [framework]',
+    name: 'test', description: 'Generate test files', usage: '/skill test <file>',
     run: function(args, cwd) {
-      var filepath = args[0];
-      if (!filepath) return { output: 'Usage: /skill test <filepath> [framework]', success: false };
-      var framework = args[1] || 'jest';
-      var resolved = path.resolve(cwd, filepath);
-      if (!fs.existsSync(resolved)) return { output: 'File not found: ' + filepath, success: false };
-
-      var content = fs.readFileSync(resolved, 'utf8');
-      var ext = path.extname(filepath);
-      var testFile = filepath.replace(ext, '.test' + ext);
-      var testPath = path.resolve(cwd, testFile);
-
-      var funcs = [];
-      if (ext === '.js' || ext === '.ts' || ext === '.jsx' || ext === '.ts') {
-        var re = /(?:export\s+)?(?:async\s+)?function\s+(\w+)/g;
-        var m;
-        while ((m = re.exec(content)) !== null) funcs.push(m[1]);
-        re = /(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s*)?\(/g;
-        while ((m = re.exec(content)) !== null) funcs.push(m[1]);
-      } else if (ext === '.py') {
-        var re = /def\s+(\w+)/g;
-        var m;
-        while ((m = re.exec(content)) !== null) funcs.push(m[1]);
-      }
-
-      var testName = path.basename(filepath, ext);
-      var testContent = '';
-
-      if (framework === 'jest' && (ext === '.js' || ext === '.ts' || ext === '.jsx')) {
-        testContent = "const " + testName + " = require('./" + testName + "');\n\n";
-        funcs.forEach(function(fn) {
-          testContent += "describe('" + fn + "', () => {\n";
-          testContent += "  test('should work correctly', () => {\n";
-          testContent += "    // TODO: Write test for " + fn + "\n";
-          testContent += "    expect(typeof " + testName + "." + fn + ").toBe('function');\n";
-          testContent += "  });\n";
-          testContent += "});\n\n";
-        });
-      } else if (framework === 'pytest' && ext === '.py') {
-        testContent = "import pytest\nfrom " + testName + " import *\n\n";
-        funcs.forEach(function(fn) {
-          testContent += "def test_" + fn + "():\n";
-          testContent += "    # TODO: Write test for " + fn + "\n";
-          testContent += "    assert True\n\n";
-        });
-      } else {
-        testContent = '// Tests for ' + filepath + ' using ' + framework + '\n';
-        funcs.forEach(function(fn) {
-          testContent += '// Test: ' + fn + '\n';
-        });
-      }
-
-      fs.writeFileSync(testPath, testContent);
-      return {
-        output: 'Generated test file: ' + testFile + '\nFound ' + funcs.length + ' functions: ' + funcs.join(', '),
-        files: [testFile],
-        success: true,
+      var file = args[0]; if (!file) return { success: false, output: 'Usage: /skill test <file>' };
+      var ext = path.extname(file), base = path.basename(file, ext);
+      var content = fs.readFileSync(path.join(cwd, file), 'utf8');
+      var tests = {
+        '.js': "const test = require('node:test');\nconst assert = require('node:assert');\n// TODO: import and test functions from " + file + "\ntest('placeholder', () => { assert.ok(true); });\n",
+        '.py': "import unittest\n# TODO: import from " + file + "\nclass Test" + base + "(unittest.TestCase):\n    def test_placeholder(self):\n        self.assertTrue(True)\nif __name__ == '__main__':\n    unittest.main()\n",
+        '.ts': "import { test, assert } from 'node:test/';\n// TODO: import from " + file + "\ntest('placeholder', () => { assert.ok(true); });\n",
       };
+      var t = tests[ext] || tests['.js'];
+      var testFile = 'test/' + base + '.test' + ext;
+      var fp = path.join(cwd, testFile);
+      fs.mkdirSync(path.dirname(fp), {recursive: true}); fs.writeFileSync(fp, t);
+      return { success: true, output: 'Created: ' + testFile };
     }
   },
-
   docker: {
-    name: 'docker',
-    description: 'Generate Dockerfile for your project',
-    usage: '/skill docker [port]',
+    name: 'docker', description: 'Generate Dockerfile', usage: '/skill docker [type]',
     run: function(args, cwd) {
-      var port = args[0] || '3000';
-      var pkgPath = path.join(cwd, 'package.json');
-      var reqPath = path.join(cwd, 'requirements.txt');
-      var goPath = path.join(cwd, 'go.mod');
-      var dockerfile = '';
-
-      if (fs.existsSync(pkgPath)) {
-        var pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-        var isNode = true;
-        var startCmd = pkg.scripts && pkg.scripts.start ? 'npm start' : 'node index.js';
-        dockerfile = 'FROM node:20-slim\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --omit=dev\nCOPY . .\nEXPOSE ' + port + '\nCMD ["npm", "start"]\n';
-      } else if (fs.existsSync(reqPath)) {
-        dockerfile = 'FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nEXPOSE ' + port + '\nCMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "' + port + '"]\n';
-      } else if (fs.existsSync(goPath)) {
-        dockerfile = 'FROM golang:1.22-alpine AS build\nWORKDIR /app\nCOPY . .\nRUN go mod download && go build -o server .\n\nFROM alpine:latest\nWORKDIR /app\nCOPY --from=build /app/server .\nEXPOSE ' + port + '\nCMD ["./server"]\n';
-      } else {
-        dockerfile = 'FROM ubuntu:24.04\nWORKDIR /app\nCOPY . .\nEXPOSE ' + port + '\nCMD ["echo", "Configure your CMD in Dockerfile"]\n';
-      }
-
-      var dockerignore = 'node_modules\n.git\n.env\n*.md\ndist\nbuild\n__pycache__\n.venv\n';
-      fs.writeFileSync(path.join(cwd, 'Dockerfile'), dockerfile);
-      fs.writeFileSync(path.join(cwd, '.dockerignore'), dockerignore);
-
-      return {
-        output: 'Generated Dockerfile and .dockerignore for port ' + port + '\n\n' + dockerfile,
-        files: ['Dockerfile', '.dockerignore'],
-        success: true,
+      var type = args[0] || 'node';
+      var D = {
+        node: 'FROM node:20-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --production\nCOPY . .\nCMD ["node", "index.js"]',
+        python: 'FROM python:3.11-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD ["python", "main.py"]',
+        static: 'FROM nginx:alpine\nCOPY . /usr/share/nginx/html',
+        multi: 'FROM node:20 AS build\nWORKDIR /app\nCOPY . .\nRUN npm ci && npm run build\nFROM nginx:alpine\nCOPY --from=build /app/dist /usr/share/nginx/html',
       };
+      fs.writeFileSync(path.join(cwd, 'Dockerfile'), D[type] || D.node);
+      return { success: true, output: 'Created Dockerfile (' + type + ')' };
     }
   },
-
   ci: {
-    name: 'ci',
-    description: 'Generate CI/CD pipeline (GitHub Actions)',
-    usage: '/skill ci [provider]',
+    name: 'ci', description: 'Generate CI config', usage: '/skill ci [github|gitlab]',
     run: function(args, cwd) {
-      var provider = args[0] || 'github';
-      var pkgPath = path.join(cwd, 'package.json');
-      var reqPath = path.join(cwd, 'requirements.txt');
-      var isNode = fs.existsSync(pkgPath);
-      var isPython = fs.existsSync(reqPath);
-      var workflow = '';
-
-      if (isNode) {
-        workflow = "name: CI\n\non:\n  push:\n    branches: [main, master]\n  pull_request:\n    branches: [main, master]\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n      - run: npm ci\n      - run: npm test\n      - run: npm run build\n";
-      } else if (isPython) {
-        workflow = "name: CI\n\non:\n  push:\n    branches: [main, master]\n  pull_request:\n    branches: [main, master]\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'\n      - run: pip install -r requirements.txt\n      - run: pip install pytest && pytest\n";
-      } else {
-        workflow = "name: CI\n\non: [push, pull_request]\n\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n";
+      var p = args[0] || 'github';
+      if (p === 'github') {
+        var dir = path.join(cwd, '.github/workflows');
+        fs.mkdirSync(dir, {recursive: true});
+        fs.writeFileSync(path.join(dir, 'ci.yml'), 'name: CI\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n      - run: npm ci\n      - run: npm test\n');
+        return { success: true, output: 'Created .github/workflows/ci.yml' };
       }
-
-      var dir = path.join(cwd, '.github', 'workflows');
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, 'ci.yml'), workflow);
-
-      return {
-        output: 'Generated GitHub Actions CI pipeline at .github/workflows/ci.yml',
-        files: ['.github/workflows/ci.yml'],
-        success: true,
-      };
+      fs.writeFileSync(path.join(cwd, '.gitlab-ci.yml'), 'image: node:20\ntest:\n  script:\n    - npm ci\n    - npm test\n');
+      return { success: true, output: 'Created .gitlab-ci.yml' };
     }
   },
-
   env: {
-    name: 'env',
-    description: 'Generate .env.example from your code',
-    usage: '/skill env',
+    name: 'env', description: 'Generate .env.example', usage: '/skill env',
     run: function(args, cwd) {
-      var { listFiles } = require('./files');
-      var files = listFiles(cwd, '**/*', { maxDepth: 3 });
-      var envVars = new Set();
-
-      files.forEach(function(f) {
-        var ext = path.extname(f);
-        if (['.js', '.ts', '.py', '.jsx', '.tsx'].indexOf(ext) === -1) return;
-        try {
-          var content = fs.readFileSync(path.join(cwd, f), 'utf8');
-          var re = /process\.env\.(\w+)/g;
-          var m;
-          while ((m = re.exec(content)) !== null) envVars.add(m[1]);
-          re = /os\.(?:environ|getenv)\(?['"](\w+)/g;
-          while ((m = re.exec(content)) !== null) envVars.add(m[1]);
-          re = /os\.getenv\(['"](\w+)['"]\)/g;
-          while ((m = re.exec(content)) !== null) envVars.add(m[1]);
-        } catch (e) {}
-      });
-
-      var envContent = '# Environment variables\n# Copy to .env and fill in values\n\n';
-      var sorted = Array.from(envVars).sort();
-      sorted.forEach(function(v) {
-        envContent += v + '=\n';
-      });
-
-      fs.writeFileSync(path.join(cwd, '.env.example'), envContent);
-      return {
-        output: 'Generated .env.example with ' + sorted.length + ' variables:\n' + sorted.map(function(v) { return '  ' + v; }).join('\n'),
-        files: ['.env.example'],
-        success: true,
-      };
+      var files = fs.readdirSync(cwd); var vars = [];
+      function scan(d) { try { for (var f of fs.readdirSync(d)) { if (f === 'node_modules' || f.startsWith('.')) continue; var fp = path.join(d, f); if (fs.statSync(fp).isDirectory()) scan(fp); else if (/\.(js|ts|py)$/.test(f)) { var c = fs.readFileSync(fp, 'utf8'); var m = c.match(/process\.env\.(\w+)/g) || c.match(/os\.environ\.get\(['"](\w+)/g) || []; for (var v of m) { var n = v.replace(/.*\.env\.?get\(['"]/, '').replace(/['"]/, ''); if (n && !vars.includes(n)) vars.push(n); } } } } catch(e) {} }
+      scan(cwd);
+      var content = vars.length ? vars.map(v => v + '=').join('\n') : '# Add your env vars here\nAPI_KEY=';
+      fs.writeFileSync(path.join(cwd, '.env.example'), content + '\n');
+      return { success: true, output: 'Created .env.example with ' + vars.length + ' vars' };
     }
   },
-
   gitignore: {
-    name: 'gitignore',
-    description: 'Generate .gitignore for your project type',
-    usage: '/skill gitignore [language]',
+    name: 'gitignore', description: 'Generate .gitignore', usage: '/skill gitignore [type]',
     run: function(args, cwd) {
-      var lang = args[0];
-      var pkgPath = path.join(cwd, 'package.json');
-      var reqPath = path.join(cwd, 'requirements.txt');
-      var goPath = path.join(cwd, 'go.mod');
-
-      if (!lang) {
-        if (fs.existsSync(pkgPath)) lang = 'node';
-        else if (fs.existsSync(reqPath)) lang = 'python';
-        else if (fs.existsSync(goPath)) lang = 'go';
-        else lang = 'general';
-      }
-
-      var templates = {
-        node: 'node_modules/\n.env\n.env.local\ndist/\nbuild/\n.next/\n.nuxt/\ncoverage/\n*.log\n.DS_Store\n',
-        python: '__pycache__/\n*.pyc\n*.pyo\nvenv/\n.venv/\nenv/\n.env\n*.egg-info/\ndist/\nbuild/\n.pytest_cache/\n.mypy_cache/\n',
-        go: '*.exe\n*.exe~\n*.dll\n*.so\n*.dylib\n*.test\n*.out\nvendor/\n.env\n',
-        rust: 'target/\nCargo.lock\n*.rs.bk\n.env\n',
-        general: '*.log\n.DS_Store\n.env\nThumbs.db\n',
+      var type = args[0] || 'node';
+      var G = {
+        node: 'node_modules/\n.env\ndist/\n*.log\n.DS_Store\ncoverage/\n',
+        python: '__pycache__/\n*.pyc\n.env\nvenv/\n*.egg-info/\n.pytest_cache/\n',
+        go: '*.exe\n*.exe~\n*.dll\n*.so\n*.dylib\nvendor/\n.env\n',
+        rust: 'target/\n*.rs.bk\n.env\nCargo.lock\n',
+        generic: '*.log\n.env\n.DS_Store\ntmp/\ndist/\n',
       };
-
-      var content = templates[lang] || templates.general;
-      fs.writeFileSync(path.join(cwd, '.gitignore'), content);
-      return {
-        output: 'Generated .gitignore for ' + lang,
-        files: ['.gitignore'],
-        success: true,
-      };
+      fs.writeFileSync(path.join(cwd, '.gitignore'), G[type] || G.generic);
+      return { success: true, output: 'Created .gitignore (' + type + ')' };
     }
   },
-
   deps: {
-    name: 'deps',
-    description: 'Check for outdated/vulnerable dependencies',
-    usage: '/skill deps [check]',
+    name: 'deps', description: 'Analyze dependencies', usage: '/skill deps',
     run: function(args, cwd) {
-      var pkgPath = path.join(cwd, 'package.json');
-      var reqPath = path.join(cwd, 'requirements.txt');
-
-      if (fs.existsSync(pkgPath)) {
-        try {
-          var output = execSync('npm audit --json 2>/dev/null || true', { cwd, encoding: 'utf8', timeout: 15000 });
-          var audit = JSON.parse(output);
-          var vulns = audit.vulnerabilities || {};
-          var count = Object.keys(vulns).length;
-          var result = 'Dependency Audit (npm)\n';
-          result += 'Vulnerabilities: ' + count + '\n';
-          for (var pkg in vulns) {
-            var v = vulns[pkg];
-            result += '  ' + pkg + ' (' + v.severity + '): ' + (v.via || []).map(function(x) { return typeof x === 'string' ? x : x.title; }).join(', ') + '\n';
-          }
-          if (count === 0) result += 'No vulnerabilities found.\n';
-
-          try {
-            var outdated = execSync('npm outdated --json 2>/dev/null || true', { cwd, encoding: 'utf8', timeout: 15000 });
-            var out = JSON.parse(outdated || '{}');
-            var outdatedCount = Object.keys(out).length;
-            result += '\nOutdated packages: ' + outdatedCount + '\n';
-            for (var p in out) {
-              result += '  ' + p + ': ' + out[p].current + ' -> ' + out[p].latest + '\n';
-            }
-          } catch (e) {}
-
-          return { output: result, success: true };
-        } catch (e) {
-          return { output: 'Audit failed: ' + e.message, success: false };
-        }
-      } else if (fs.existsSync(reqPath)) {
-        try {
-          var out = execSync('pip list --outdated --format=json 2>/dev/null || echo "[]"', { cwd, encoding: 'utf8', timeout: 15000 });
-          var outdated = JSON.parse(out);
-          var result = 'Dependency Audit (pip)\n';
-          result += 'Outdated packages: ' + outdated.length + '\n';
-          outdated.forEach(function(p) {
-            result += '  ' + p.name + ': ' + p.version + ' -> ' + p.latest_version + '\n';
-          });
-          return { output: result, success: true };
-        } catch (e) {
-          return { output: 'pip audit not available. Install pip-audit: pip install pip-audit', success: false };
-        }
-      }
-      return { output: 'No package.json or requirements.txt found', success: false };
+      var pj = path.join(cwd, 'package.json');
+      if (!fs.existsSync(pj)) return { success: false, output: 'No package.json found' };
+      var pkg = JSON.parse(fs.readFileSync(pj, 'utf8'));
+      var deps = Object.keys(pkg.dependencies || {}); var dev = Object.keys(pkg.devDependencies || {});
+      var out = 'Dependencies (' + deps.length + '):\n' + deps.map(d => '  ' + d + ': ' + pkg.dependencies[d]).join('\n');
+      out += '\n\nDevDependencies (' + dev.length + '):\n' + dev.map(d => '  ' + d + ': ' + pkg.devDependencies[d]).join('\n');
+      return { success: true, output: out };
     }
   },
-
   explain: {
-    name: 'explain',
-    description: 'Explain a file, function, or architecture',
-    usage: '/skill explain <filepath>',
+    name: 'explain', description: 'Explain code in a file', usage: '/skill explain <file>',
     run: function(args, cwd) {
-      var filepath = args[0];
-      if (!filepath) return { output: 'Usage: /skill explain <filepath>', success: false };
-      var resolved = path.resolve(cwd, filepath);
-      if (!fs.existsSync(resolved)) return { output: 'File not found: ' + filepath, success: false };
-      var content = fs.readFileSync(resolved, 'utf8');
-      var lines = content.split('\n');
-      var result = filepath + ' (' + lines.length + ' lines)\n\n';
-
-      var funcs = [];
-      var classes = [];
-      var imports = [];
-
-      lines.forEach(function(line, i) {
-        var m;
-        if (m = line.match(/(?:export\s+)?(?:async\s+)?function\s+(\w+)/)) funcs.push({ name: m[1], line: i + 1 });
-        else if (m = line.match(/class\s+(\w+)/)) classes.push({ name: m[1], line: i + 1 });
-        else if (m = line.match(/(?:import|require)\(?\s*['"](.+)['"]/)) imports.push({ from: m[1], line: i + 1 });
-        else if (m = line.match(/def\s+(\w+)/)) funcs.push({ name: m[1], line: i + 1 });
-      });
-
-      if (imports.length > 0) {
-        result += 'Imports (' + imports.length + '):\n';
-        imports.forEach(function(i) { result += '  L' + i.line + ': ' + i.from + '\n'; });
-      }
-      if (classes.length > 0) {
-        result += '\nClasses (' + classes.length + '):\n';
-        classes.forEach(function(c) { result += '  L' + c.line + ': ' + c.name + '\n'; });
-      }
-      if (funcs.length > 0) {
-        result += '\nFunctions (' + funcs.length + '):\n';
-        funcs.forEach(function(f) { result += '  L' + f.line + ': ' + f.name + '\n'; });
-      }
-
-      result += '\nSummary: ' + lines.length + ' lines, ' + funcs.length + ' functions, ' + classes.length + ' classes, ' + imports.length + ' imports.';
-      return { output: result, success: true };
+      var file = args[0]; if (!file) return { success: false, output: 'Usage: /skill explain <file>' };
+      var content = fs.readFileSync(path.join(cwd, file), 'utf8');
+      var lines = content.split('\n'), out = 'File: ' + file + ' (' + lines.length + ' lines)\n\n';
+      for (var i = 0; i < Math.min(lines.length, 50); i++) out += (i+1) + ': ' + lines[i] + '\n';
+      if (lines.length > 50) out += '... (' + (lines.length - 50) + ' more lines)';
+      return { success: true, output: out };
     }
   },
-
   security: {
-    name: 'security',
-    description: 'Security audit — scan for common vulnerabilities',
-    usage: '/skill security',
+    name: 'security', description: 'Basic security check', usage: '/skill security [file]',
     run: function(args, cwd) {
-      var { listFiles } = require('./files');
-      var files = listFiles(cwd, '**/*', { maxDepth: 4 });
-      var issues = [];
-
-      var secretPatterns = [
-        { re: /(?:api[_-]?key|apikey)\s*[:=]\s*['"]([a-zA-Z0-9]{20,})/i, name: 'Hardcoded API key', severity: 'HIGH' },
-        { re: /(?:secret|password|passwd)\s*[:=]\s*['"]([^'"]{8,})/i, name: 'Hardcoded secret/password', severity: 'HIGH' },
-        { re: /(?:AKIA|ASIA)[A-Z0-9]{16}/, name: 'AWS access key', severity: 'CRITICAL' },
-        { re: /ghp_[a-zA-Z0-9]{36}/, name: 'GitHub personal access token', severity: 'CRITICAL' },
-        { re: /sk_[a-zA-Z0-9]{24,}/, name: 'Stripe API key', severity: 'CRITICAL' },
-        { re: /eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/, name: 'JWT token', severity: 'MEDIUM' },
-        { re: /eval\s*\(/, name: 'eval() usage — code injection risk', severity: 'MEDIUM' },
-        { re: /innerHTML\s*=/, name: 'innerHTML — XSS risk', severity: 'LOW' },
-        { re: /(?:SELECT|INSERT|UPDATE|DELETE)\s+.*\+\s*\w+/i, name: 'Possible SQL injection (string concatenation)', severity: 'HIGH' },
+      var target = args[0] || cwd;
+      var patterns = [
+        { p: /api[_-]?key\s*=\s*['"][^'"]+['"]/gi, m: 'Hardcoded API key' },
+        { p: /password\s*=\s*['"][^'"]+['"]/gi, m: 'Hardcoded password' },
+        { p: /secret\s*=\s*['"][^'"]+['"]/gi, m: 'Hardcoded secret' },
+        { p: /eval\s*\(/g, m: 'Use of eval() - code injection risk' },
+        { p: /exec\s*\(/g, m: 'Use of exec() - command injection risk' },
       ];
-
-      files.forEach(function(f) {
-        var ext = path.extname(f);
-        if (['.js', '.ts', '.jsx', '.tsx', '.py', '.go', '.java'].indexOf(ext) === -1) return;
-        if (f.indexOf('node_modules') !== -1 || f.indexOf('.test.') !== -1) return;
-        try {
-          var content = fs.readFileSync(path.join(cwd, f), 'utf8');
-          var lines = content.split('\n');
-          secretPatterns.forEach(function(p) {
-            lines.forEach(function(line, i) {
-              if (p.re.test(line)) {
-                issues.push({ file: f, line: i + 1, severity: p.severity, name: p.name });
-              }
-            });
-          });
-        } catch (e) {}
-      });
-
-      var gitignorePath = path.join(cwd, '.gitignore');
-      if (fs.existsSync(path.join(cwd, '.env')) && fs.existsSync(gitignorePath)) {
-        var gi = fs.readFileSync(gitignorePath, 'utf8');
-        if (gi.indexOf('.env') === -1) {
-          issues.push({ file: '.env', line: 0, severity: 'HIGH', name: '.env not in .gitignore' });
-        }
-      }
-
-      var result = 'Security Audit\n';
-      result += 'Issues found: ' + issues.length + '\n\n';
-
-      var severityOrder = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
-      severityOrder.forEach(function(sev) {
-        var sevIssues = issues.filter(function(i) { return i.severity === sev; });
-        if (sevIssues.length > 0) {
-          result += sev + ' (' + sevIssues.length + '):\n';
-          sevIssues.forEach(function(i) {
-            result += '  ' + i.file + (i.line > 0 ? ':' + i.line : '') + ' — ' + i.name + '\n';
-          });
-        }
-      });
-
-      if (issues.length === 0) result += 'No security issues detected.\n';
-
-      return { output: result, success: true };
+      var findings = [];
+      function scan(f) { var c = fs.readFileSync(f, 'utf8'); for (var p of patterns) { var m = c.match(p.p); if (m) findings.push({file: f, issue: p.m, count: m.length}); } }
+      if (fs.statSync(target).isDirectory()) {
+        function walk(d) { for (var f of fs.readdirSync(d)) { if (f.startsWith('.') || f === 'node_modules') continue; var fp = path.join(d, f); if (fs.statSync(fp).isDirectory()) walk(fp); else if (/\.(js|ts|py)$/.test(f)) scan(fp); } }
+        walk(target);
+      } else scan(target);
+      if (!findings.length) return { success: true, output: 'No obvious security issues found.' };
+      return { success: true, output: 'Security findings:\n' + findings.map(f => '  ' + f.file + ': ' + f.issue + ' (' + f.count + 'x)').join('\n') };
     }
   },
-
   size: {
-    name: 'size',
-    description: 'Analyze project size and find large files',
-    usage: '/skill size',
+    name: 'size', description: 'Analyze bundle/file sizes', usage: '/skill size',
     run: function(args, cwd) {
-      var { listFiles } = require('./files');
-      var files = listFiles(cwd, '**/*', { maxDepth: 10, includeBinary: true });
-      var sizes = [];
-
-      files.forEach(function(f) {
-        try {
-          var stat = fs.statSync(path.join(cwd, f));
-          sizes.push({ file: f, size: stat.size });
-        } catch (e) {}
-      });
-
-      sizes.sort(function(a, b) { return b.size - a.size; });
-
-      var total = sizes.reduce(function(s, f) { return s + f.size; }, 0);
-      var result = 'Project Size Analysis\n';
-      result += 'Total: ' + (total / 1024).toFixed(1) + ' KB (' + files.length + ' files)\n\n';
-      result += 'Largest files:\n';
-      sizes.slice(0, 15).forEach(function(f) {
-        var sizeStr = f.size > 1024 ? (f.size / 1024).toFixed(1) + ' KB' : f.size + ' B';
-        result += '  ' + sizeStr.padStart(10) + '  ' + f.file + '\n';
-      });
-
-      return { output: result, success: true };
+      var files = []; function walk(d) { for (var f of fs.readdirSync(d)) { if (f === 'node_modules' || f.startsWith('.')) continue; var fp = path.join(d, f); var s = fs.statSync(fp); if (s.isDirectory()) walk(fp); else files.push({path: fp, size: s.size}); } }
+      walk(cwd); files.sort((a, b) => b.size - a.size);
+      var total = files.reduce((s, f) => s + f.size, 0);
+      var out = 'Total: ' + (total / 1024).toFixed(1) + 'KB across ' + files.length + ' files\n\nTop 10:\n';
+      out += files.slice(0, 10).map(f => '  ' + (f.size / 1024).toFixed(1) + 'KB ' + f.path.replace(cwd + '/', '')).join('\n');
+      return { success: true, output: out };
     }
   },
-
   translate: {
-    name: 'translate',
-    description: 'Translate code between languages (via AI)',
-    usage: '/skill translate <filepath> <target-lang>',
+    name: 'translate', description: 'Translate code to another language', usage: '/skill translate <file> <lang>',
     run: function(args, cwd) {
-      var filepath = args[0];
-      var targetLang = args[1];
-      if (!filepath || !targetLang) return { output: 'Usage: /skill translate <filepath> <target-lang>', success: false };
-      return {
-        output: 'Translation ready. Ask Stew: "Translate ' + filepath + ' to ' + targetLang + '"\n' +
-          'Stew will read the file and generate the translated version.',
-        success: true,
-        needsAI: true,
-        prompt: 'Translate the file ' + filepath + ' to ' + targetLang + '. Read the file, understand its logic, and rewrite it in ' + targetLang + '. Save as a new file with the appropriate extension.',
-      };
+      var file = args[0], lang = args[1]; if (!file || !lang) return { success: false, output: 'Usage: /skill translate <file> <lang>' };
+      var content = fs.readFileSync(path.join(cwd, file), 'utf8');
+      return { success: true, output: 'Use: stew code\nThen: Translate ' + file + ' to ' + lang + '\n\nPaste this:\n' + content.substring(0, 2000) };
     }
   },
-
   refactor: {
-    name: 'refactor',
-    description: 'Suggest refactoring improvements (via AI)',
-    usage: '/skill refactor <filepath>',
+    name: 'refactor', description: 'Get refactoring suggestions', usage: '/skill refactor <file>',
     run: function(args, cwd) {
-      var filepath = args[0];
-      if (!filepath) return { output: 'Usage: /skill refactor <filepath>', success: false };
-      return {
-        output: 'Refactoring analysis ready.',
-        success: true,
-        needsAI: true,
-        prompt: 'Analyze ' + filepath + ' and suggest refactoring improvements. Look for: code duplication, long functions, complex conditionals, missing error handling, naming issues. Show the refactored version.',
-      };
+      var file = args[0]; if (!file) return { success: false, output: 'Usage: /skill refactor <file>' };
+      var c = fs.readFileSync(path.join(cwd, file), 'utf8'); var lines = c.split('\n');
+      var issues = [];
+      if (lines.length > 300) issues.push('File is very long (' + lines.length + ' lines) — consider splitting');
+      if (c.includes('var ')) issues.push('Uses var — consider const/let');
+      if ((c.match(/function /g) || []).length > 10) issues.push('Many functions — consider modularizing');
+      if (!issues.length) issues.push('No obvious refactoring needed');
+      return { success: true, output: 'Refactoring suggestions for ' + file + ':\n' + issues.map(i => '  ' + i).join('\n') };
     }
   },
-
   document: {
-    name: 'document',
-    description: 'Generate documentation for your project',
-    usage: '/skill document [format]',
+    name: 'document', description: 'Generate JSDoc/docstrings', usage: '/skill document <file>',
     run: function(args, cwd) {
-      var format = args[0] || 'markdown';
-      var { listFiles, readFileSync } = require('./files');
-      var files = listFiles(cwd, '**/*', { maxDepth: 3 });
-
-      var codeFiles = files.filter(function(f) {
-        var ext = path.extname(f);
-        return ['.js', '.ts', '.jsx', '.tsx', '.py', '.go', '.java', '.rs'].indexOf(ext) !== -1;
-      });
-
-      var doc = '# Project Documentation\n\n';
-      doc += 'Generated by Stew Code\n\n';
-      doc += '## Overview\n\n';
-      doc += 'Files: ' + codeFiles.length + ' code files\n\n';
-      doc += '## File Structure\n\n';
-
-      codeFiles.forEach(function(f) {
-        doc += '### ' + f + '\n\n';
-        try {
-          var content = fs.readFileSync(path.join(cwd, f), 'utf8');
-          var lines = content.split('\n');
-          var funcs = [];
-          lines.forEach(function(line, i) {
-            var m;
-            if (m = line.match(/(?:export\s+)?(?:async\s+)?function\s+(\w+)/)) funcs.push(m[1]);
-            else if (m = line.match(/def\s+(\w+)/)) funcs.push(m[1]);
-            else if (m = line.match(/(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s*)?\(/)) funcs.push(m[1]);
-          });
-          if (funcs.length > 0) {
-            doc += 'Functions: ' + funcs.join(', ') + '\n\n';
-          }
-          doc += 'Lines: ' + lines.length + '\n\n';
-        } catch (e) {}
-      });
-
-      var docPath = path.join(cwd, 'DOCUMENTATION.md');
-      fs.writeFileSync(docPath, doc);
-      return {
-        output: 'Generated DOCUMENTATION.md (' + codeFiles.length + ' files documented)',
-        files: ['DOCUMENTATION.md'],
-        success: true,
-      };
+      var file = args[0]; if (!file) return { success: false, output: 'Usage: /skill document <file>' };
+      var c = fs.readFileSync(path.join(cwd, file), 'utf8'); var lines = c.split('\n');
+      var fns = lines.filter(l => /function |def |const \w+ = \(/.test(l));
+      return { success: true, output: 'Functions found in ' + file + ':\n' + fns.map(f => '  ' + f.trim()).join('\n') + '\n\nUse stew code to generate full docs.' };
     }
   },
-
   clean: {
-    name: 'clean',
-    description: 'Clean build artifacts and temp files',
-    usage: '/skill clean',
+    name: 'clean', description: 'Remove common junk files', usage: '/skill clean',
     run: function(args, cwd) {
-      var dirs = ['node_modules', 'dist', 'build', '.next', '.nuxt', '__pycache__', '.pytest_cache', '.mypy_cache', 'coverage', '.turbo', '.cache'];
-      var cleaned = [];
-      dirs.forEach(function(d) {
-        var p = path.join(cwd, d);
-        if (fs.existsSync(p)) {
-          try {
-            fs.rmSync(p, { recursive: true, force: true });
-            cleaned.push(d);
-          } catch (e) {}
-        }
-      });
-
-      var patterns = ['*.log', '*.pyc', '*.pyo', '.DS_Store', 'Thumbs.db'];
-      patterns.forEach(function(p) {
-        try {
-          execSync('find . -name "' + p + '" -delete 2>/dev/null', { cwd, timeout: 5000 });
-        } catch (e) {}
-      });
-
-      return {
-        output: cleaned.length > 0 ? 'Cleaned: ' + cleaned.join(', ') : 'Nothing to clean.',
-        success: true,
-      };
+      var junk = ['.DS_Store', 'Thumbs.db', '*.log', '*.tmp', '*.bak'];
+      var removed = 0;
+      function walk(d) { for (var f of fs.readdirSync(d)) { var fp = path.join(d, f); if (fs.statSync(fp).isDirectory()) walk(fp); else if (junk.some(j => new RegExp(j.replace('*', '.*')).test(f))) { fs.unlinkSync(fp); removed++; } } }
+      walk(cwd); return { success: true, output: 'Removed ' + removed + ' junk file(s)' };
     }
   },
-
   loc: {
-    name: 'loc',
-    description: 'Count lines of code by language',
-    usage: '/skill loc',
+    name: 'loc', description: 'Count lines of code', usage: '/skill loc',
     run: function(args, cwd) {
-      var { listFiles } = require('./files');
-      var files = listFiles(cwd, '**/*', { maxDepth: 10 });
-      var stats = {};
-
-      files.forEach(function(f) {
-        var ext = path.extname(f) || 'other';
-        if (!stats[ext]) stats[ext] = { files: 0, lines: 0 };
-        stats[ext].files++;
-        try {
-          var content = fs.readFileSync(path.join(cwd, f), 'utf8');
-          stats[ext].lines += content.split('\n').length;
-        } catch (e) {}
-      });
-
-      var result = 'Lines of Code\n\n';
-      result += 'Ext       Files     Lines\n';
-      result += '─────────────────────────\n';
-      var sorted = Object.entries(stats).sort(function(a, b) { return b[1].lines - a[1].lines; });
-      sorted.forEach(function(e) {
-        result += e[0].padEnd(10) + String(e[1].files).padStart(6) + String(e[1].lines).padStart(10) + '\n';
-      });
-
-      var totalLines = Object.values(stats).reduce(function(s, v) { return s + v.lines; }, 0);
-      var totalFiles = Object.values(stats).reduce(function(s, v) { return s + v.files; }, 0);
-      result += '─────────────────────────\n';
-      result += 'Total'.padEnd(10) + String(totalFiles).padStart(6) + String(totalLines).padStart(10) + '\n';
-
-      return { output: result, success: true };
+      var stats = { files: 0, lines: 0, blank: 0, code: 0 };
+      function walk(d) { for (var f of fs.readdirSync(d)) { if (f === 'node_modules' || f.startsWith('.')) continue; var fp = path.join(d, f); if (fs.statSync(fp).isDirectory()) walk(fp); else if (/\.(js|ts|py|go|rs|java|c|cpp|rb)$/.test(f)) { stats.files++; var c = fs.readFileSync(fp, 'utf8').split('\n'); stats.lines += c.length; stats.blank += c.filter(l => !l.trim()).length; stats.code += c.filter(l => l.trim() && !l.trim().startsWith('//')).length; } } }
+      walk(cwd);
+      return { success: true, output: 'Lines of Code:\n  Files: ' + stats.files + '\n  Total: ' + stats.lines + '\n  Code: ' + stats.code + '\n  Blank: ' + stats.blank };
     }
   },
-
   format: {
-    name: 'format',
-    description: 'Format code (prettier, black, gofmt)',
-    usage: '/skill format [language]',
+    name: 'format', description: 'Format code in a file', usage: '/skill format <file>',
     run: function(args, cwd) {
-      var pkgPath = path.join(cwd, 'package.json');
-      var reqPath = path.join(cwd, 'requirements.txt');
-      var goPath = path.join(cwd, 'go.mod');
-
-      try {
-        if (fs.existsSync(pkgPath)) {
-          execSync('npx prettier --write "**/*.{js,ts,jsx,tsx,json,css,md}" 2>&1', { cwd, timeout: 30000 });
-          return { output: 'Formatted with prettier', success: true };
-        } else if (fs.existsSync(reqPath)) {
-          execSync('python -m black . 2>&1 || echo "Install: pip install black"', { cwd, timeout: 30000 });
-          return { output: 'Formatted with black', success: true };
-        } else if (fs.existsSync(goPath)) {
-          execSync('gofmt -w . 2>&1', { cwd, timeout: 15000 });
-          return { output: 'Formatted with gofmt', success: true };
-        }
-      } catch (e) {
-        return { output: 'Format failed: ' + e.message, success: false };
-      }
-      return { output: 'No formatter detected. Install prettier, black, or gofmt.', success: false };
+      var file = args[0]; if (!file) return { success: false, output: 'Usage: /skill format <file>' };
+      var fp = path.join(cwd, file); var c = fs.readFileSync(fp, 'utf8');
+      var formatted = c.replace(/;\s*\n/g, ';\n').replace(/\n{3,}/g, '\n\n').replace(/\s+$/gm, '');
+      fs.writeFileSync(fp, formatted);
+      return { success: true, output: 'Formatted: ' + file };
     }
   },
-
   checklist: {
-    name: 'checklist',
-    description: 'Generate deployment checklist',
-    usage: '/skill checklist',
+    name: 'checklist', description: 'Code review checklist', usage: '/skill checklist',
     run: function(args, cwd) {
-      var checks = [
-        { item: 'package.json exists', ok: fs.existsSync(path.join(cwd, 'package.json')) || fs.existsSync(path.join(cwd, 'requirements.txt')) },
-        { item: '.gitignore exists', ok: fs.existsSync(path.join(cwd, '.gitignore')) },
-        { item: '.env.example exists', ok: fs.existsSync(path.join(cwd, '.env.example')) },
-        { item: 'README.md exists', ok: fs.existsSync(path.join(cwd, 'README.md')) },
-        { item: 'Tests directory exists', ok: fs.existsSync(path.join(cwd, '__tests__')) || fs.existsSync(path.join(cwd, 'tests')) || fs.existsSync(path.join(cwd, 'test')) },
-        { item: 'Dockerfile exists', ok: fs.existsSync(path.join(cwd, 'Dockerfile')) },
-        { item: 'CI pipeline exists', ok: fs.existsSync(path.join(cwd, '.github', 'workflows')) },
-        { item: '.env not committed', ok: !fs.existsSync(path.join(cwd, '.env')) || (fs.existsSync(path.join(cwd, '.gitignore')) && fs.readFileSync(path.join(cwd, '.gitignore'), 'utf8').indexOf('.env') !== -1) },
-        { item: 'No hardcoded secrets', ok: true },
-      ];
-
-      var result = 'Deployment Checklist\n\n';
-      var passed = 0;
-      checks.forEach(function(c) {
-        var mark = c.ok ? '[x]' : '[ ]';
-        if (c.ok) passed++;
-        result += mark + ' ' + c.item + '\n';
-      });
-      result += '\n' + passed + '/' + checks.length + ' checks passed';
-
-      return { output: result, success: true };
+      var items = ['No hardcoded secrets/keys', 'Error handling on all async operations', 'Input validation on all endpoints', 'No console.log in production code', 'Proper HTTP status codes', 'Consistent naming convention', 'Tests for critical paths', 'Documentation for public APIs', 'No unused dependencies', 'Security headers configured'];
+      return { success: true, output: 'Code Review Checklist:\n' + items.map((i, n) => '  ' + (n+1) + '. ' + i).join('\n') };
     }
   },
 };
 
-function ensureSkillsDir() {
-  if (!fs.existsSync(SKILLS_DIR)) {
-    fs.mkdirSync(SKILLS_DIR, { recursive: true });
-  }
-}
-
 function listSkills() {
-  ensureSkillsDir();
-  var builtin = Object.keys(BUILTIN_SKILLS).map(function(name) {
-    var s = BUILTIN_SKILLS[name];
-    return { name: s.name, description: s.description, usage: s.usage, type: 'builtin' };
-  });
-
+  var builtins = Object.keys(BUILTIN_SKILLS);
   var custom = [];
-  var files = [];
-  try { files = fs.readdirSync(SKILLS_DIR); } catch (e) {}
-  files.forEach(function(f) {
-    if (f.endsWith('.js')) {
-      try {
-        var content = fs.readFileSync(path.join(SKILLS_DIR, f), 'utf8');
-        var nameMatch = content.match(/@skill\s+(\w+)/);
-        var descMatch = content.match(/@description\s+(.+)/);
-        custom.push({
-          name: nameMatch ? nameMatch[1] : f.replace('.js', ''),
-          description: descMatch ? descMatch[1].trim() : 'Custom skill',
-          usage: '/skill ' + (nameMatch ? nameMatch[1] : f.replace('.js', '')),
-          type: 'custom',
-        });
-      } catch (e) {}
-    }
-  });
-
-  return { builtin: builtin, custom: custom, total: builtin.length + custom.length };
+  if (fs.existsSync(SKILLS_DIR)) { custom = fs.readdirSync(SKILLS_DIR).filter(f => f.endsWith('.js')).map(f => f.replace('.js', '')); }
+  return { builtins, custom };
 }
 
 function runSkill(name, args, cwd) {
-  if (BUILTIN_SKILLS[name]) {
-    return BUILTIN_SKILLS[name].run(args, cwd);
-  }
-
-  ensureSkillsDir();
-  var skillPath = path.join(SKILLS_DIR, name + '.js');
-  if (fs.existsSync(skillPath)) {
-    try {
-      var skill = require(skillPath);
-      if (typeof skill.run === 'function') {
-        return skill.run(args, cwd);
-      }
-      return { output: 'Skill ' + name + ' has no run() function', success: false };
-    } catch (e) {
-      return { output: 'Skill error: ' + e.message, success: false };
-    }
-  }
-
-  return { output: 'Skill not found: ' + name + '. Use /skills to see available skills or /forge to create one.', success: false };
+  cwd = cwd || process.cwd();
+  if (BUILTIN_SKILLS[name]) { try { return BUILTIN_SKILLS[name].run(args, cwd); } catch (e) { return { success: false, output: 'Error: ' + e.message }; } }
+  var fp = path.join(SKILLS_DIR, name + '.js');
+  if (fs.existsSync(fp)) { try { var mod = require(fp); return mod.run ? mod.run(args, cwd) : { success: false, output: 'Invalid skill' }; } catch (e) { return { success: false, output: 'Error: ' + e.message }; } }
+  return { success: false, output: 'Skill not found: ' + name + '. Use /skills to list.' };
 }
 
-function generateSkillCode(skillName, description, language) {
-  language = language || 'javascript';
-  var skillCode = '/**\n';
-  skillCode += ' * @skill ' + skillName + '\n';
-  skillCode += ' * @description ' + description + '\n';
-  skillCode += ' * @created by Stew Code Skill Forge\n';
-  skillCode += ' * Auto-generated — review before use.\n';
-  skillCode += ' */\n';
-  skillCode += 'const fs = require(\'fs\');\n';
-  skillCode += 'const path = require(\'path\');\n\n';
-  skillCode += 'module.exports = {\n';
-  skillCode += '  name: \'' + skillName + '\',\n';
-  skillCode += '  description: \'' + description + '\',\n';
-  skillCode += '  usage: \'/skill ' + skillName + ' [args]\',\n';
-  skillCode += '  run: function(args, cwd) {\n';
-  skillCode += '    // TODO: Implement ' + description + '\n';
-  skillCode += '    // args: array of string arguments\n';
-  skillCode += '    // cwd: current working directory\n';
-  skillCode += '    // Return: { output: string, success: boolean, files?: [] }\n';
-  skillCode += '    \n';
-  skillCode += '    var result = \'Skill ' + skillName + ' executed. Args: \' + args.join(\' \');\n';
-  skillCode += '    return { output: result, success: true };\n';
-  skillCode += '  }\n';
-  skillCode += '};\n';
-
-  return skillCode;
-}
-
-function forgeSkill(skillName, description) {
-  ensureSkillsDir();
-  var code = generateSkillCode(skillName, description);
-  var skillPath = path.join(SKILLS_DIR, skillName + '.js');
-  fs.writeFileSync(skillPath, code);
-  return {
-    output: 'Forged new skill: ' + skillName + '\nSaved to: ' + skillPath + '\n\nThe skill is a template. Ask Stew to implement it: "Implement the ' + skillName + ' skill to ' + description + '"',
-    path: skillPath,
-    success: true,
-  };
+function forgeSkill(name, desc) {
+  if (!name || !desc) return { success: false, output: 'Usage: /forge <name> <description>' };
+  if (BUILTIN_SKILLS[name]) return { success: false, output: 'Cannot override built-in: ' + name };
+  fs.mkdirSync(SKILLS_DIR, {recursive: true});
+  var code = "const fs = require('fs');\nconst path = require('path');\n\nmodule.exports = {\n  name: '" + name + "',\n  description: '" + desc + "',\n  run: function(args, cwd) {\n    // TODO: Implement '" + desc + "'\n    return { success: true, output: 'Skill " + name + " executed with args: ' + args.join(' ') };\n  }\n};\n";
+  fs.writeFileSync(path.join(SKILLS_DIR, name + '.js'), code);
+  return { success: true, output: 'Created skill: ' + name + ' at ' + path.join(SKILLS_DIR, name + '.js') };
 }
 
 function deleteSkill(name) {
-  var skillPath = path.join(SKILLS_DIR, name + '.js');
-  if (fs.existsSync(skillPath)) {
-    fs.unlinkSync(skillPath);
-    return { output: 'Deleted skill: ' + name, success: true };
-  }
-  return { output: 'Custom skill not found: ' + name, success: false };
+  var fp = path.join(SKILLS_DIR, name + '.js');
+  if (fs.existsSync(fp)) { fs.unlinkSync(fp); return { success: true, output: 'Deleted skill: ' + name }; }
+  return { success: false, output: 'Skill not found: ' + name };
 }
 
-module.exports = {
-  BUILTIN_SKILLS,
-  listSkills,
-  runSkill,
-  forgeSkill,
-  deleteSkill,
-  generateSkillCode,
-  SKILLS_DIR,
-};
+module.exports = { BUILTIN_SKILLS, listSkills, runSkill, forgeSkill, deleteSkill };

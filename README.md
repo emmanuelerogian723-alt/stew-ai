@@ -1,22 +1,18 @@
 # 🍲 Stew Code
 
-**The Ultimate Terminal Coding Agent** — the only coding agent that forges its own skills, runs for hours unattended, and has a face. Zero dependencies.
+Terminal coding agent. Zero dependencies.
 
-[![npm version](https://img.shields.io/badge/version-2.2.0-blue)](https://www.npmjs.com/package/stew-ai)
-[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
+## What's New in v2.4 — Web Scraper + API Caller + Marathon Mode + Skill Forge
 
-## What's New in v2.2 — Web Scraper + API Caller + Marathon Mode + Skill Forge
+*Marathon Mode* — run autonomously for hours, checkpoints to disk, fully resumable.
 
-*Marathon Mode* — run autonomously for HOURS, not a fixed step list. Re-plans continuously toward the goal, checkpoints to disk every iteration, and is fully resumable. Kill the terminal, come back tomorrow — `stew marathon --resume <id>` picks up exactly where it left off.
+*Skill Forge* — writes new skills for itself, no plugins needed.
 
-*Skill Forge* — when Stew encounters a task it can't do, it writes a new skill for itself and starts using it immediately. No MCP plugins, no marketplace — just self-improvement.
+*Web Scraper* — `stew scrape <url>` and `stew crawl <url> --depth N`.
 
-*Web Scraper* — `stew scrape <url>` fetches any URL, strips HTML, extracts clean text + links + metadata. `stew crawl <url> --depth 3` crawls entire sites. Also available as `/scrape` and `/crawl` in the REPL, and as actions in Agent/Marathon mode.
+*API Caller* — `stew api GET/POST <url>` with headers, body, auth.
 
-*API Caller* — `stew api GET https://api.example.com` calls any REST or GraphQL API. Supports custom headers, JSON bodies, query params, bearer auth. Also `/api` in the REPL and as an action in Agent/Marathon mode. Built-in `curl`-style flag parsing (`-H`, `-d`, `-q`).
-
-*Mascot* — Stew now has a face. ANSI art that reacts: thinking, working, success, error, and marathon states.
+*Mascot* — ANSI art that reacts to state.
 
 ## Also included
 
@@ -42,6 +38,19 @@
 ```bash
 npm install -g stew-ai
 ```
+
+
+## v2.4 — Security Scanner + Self-Verify + Endurance + Dev Environment
+
+*Security Scanner* — `/scan` scans your code for hardcoded secrets, injection risks, phishing patterns, and malware indicators. 20+ patterns, threat scoring.
+
+*Self-Verification* — `/verify` checks all files changed in the session: syntax, logic, and security. Auto-retries 3x.
+
+*Endurance Mode* — `/endurance <hours> [task]` runs for hours with checkpoints + self-heal.
+
+*Dev Environment Setup* — `/setup vscode` creates settings, launch, tasks, extensions. `/setup opencode` creates opencode.json config. `/setup all` does both + .editorconfig.
+
+*New slash commands* — `/install <pkg>`, `/clone <url>`, `/serve [port]`, `/deploy [target]`, `/create <type> <prompt>`.
 
 ## Quick Start
 
