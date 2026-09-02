@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stew Code — The Free AI Coding Agent Built in Nigeria for Africa and the World</title>
+<meta name="description" content="Stew Code is a free, zero-dependency terminal AI coding agent with security scanning, marathon mode, 16+ skills, and dev environment setup. Built by Nigerian developers for the global developer community.">
+<meta name="keywords" content="stew code, AI coding agent, terminal AI, free AI coding tool, Nigerian developer, African tech, open source AI, CLI coding assistant, stew-ai npm, AI agent Nigeria, coding agent free, alternative to GitHub Copilot, free Cursor alternative">
+<meta name="author" content="Emmanuel Erog — EROGIAN">
+<meta name="robots" content="index, follow">
+<meta property="og:title" content="Stew Code — The Free AI Coding Agent Built in Nigeria">
+<meta property="og:description" content="Free, zero-dependency terminal AI coding agent. Security scanner, marathon mode, 16+ skills, dev environment setup. Built in Nigeria for the world.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://emmanuelerogian723-alt.github.io/stew-ai/">
+<meta property="og:image" content="https://repository-images.githubusercontent.com/stew-ai/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Stew Code — Free AI Coding Agent Built in Nigeria">
+<meta name="twitter:description" content="Terminal AI coding agent with security scanning, marathon mode, 16+ skills. Zero dependencies. Free.">
+<link rel="canonical" href="https://emmanuelerogian723-alt.github.io/stew-ai/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Stew Code",
+  "description": "Free, zero-dependency terminal AI coding agent with security scanning, marathon mode, 16+ built-in skills, and dev environment setup. Built in Nigeria.",
+  "url": "https://emmanuelerogian723-alt.github.io/stew-ai/",
+  "author": { "@type": "Person", "name": "Emmanuel Erog" },
+  "publisher": { "@type": "Organization", "name": "EROGIAN" },
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Cross-platform (Node.js 18+)",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "softwareVersion": "2.4.0"
+}
+</script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0a0a;color:#e0e0e0;line-height:1.7}
+.hero{text-align:center;padding:80px 20px 60px;background:linear-gradient(135deg,#0a0a0a,#1a1a2e,#16213e)}
+.hero h1{font-size:3.5rem;margin-bottom:16px;background:linear-gradient(90deg,#00d2ff,#3a7bd5,#00d2ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero .tagline{font-size:1.3rem;color:#888;max-width:600px;margin:0 auto 30px}
+.hero .badges{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:40px}
+.hero .badge{background:#1a1a2e;padding:8px 16px;border-radius:20px;font-size:0.85rem;color:#00d2ff;border:1px solid #333}
+.install{background:#1a1a2e;border:1px solid #333;border-radius:12px;padding:20px 30px;display:inline-block;margin:0 auto}
+.install code{color:#00d2ff;font-family:'Fira Code',monospace;font-size:1.1rem}
+.cta{margin-top:30px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.cta a{padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;transition:transform 0.2s}
+.cta .primary{background:linear-gradient(90deg,#00d2ff,#3a7bd5);color:#000}
+.cta .secondary{border:1px solid #333;color:#e0e0e0}
+.cta a:hover{transform:scale(1.05)}
+.section{max-width:800px;margin:0 auto;padding:60px 20px}
+.section h2{font-size:2rem;margin-bottom:24px;color:#00d2ff;border-bottom:1px solid #333;padding-bottom:12px}
+.section h3{font-size:1.3rem;margin:30px 0 12px;color:#3a7bd5}
+.feature{background:#111;border-radius:12px;padding:24px;margin:16px 0;border-left:3px solid #00d2ff}
+.feature h4{color:#00d2ff;margin-bottom:8px}
+.feature p{color:#aaa}
+.code{background:#0d1117;border:1px solid #333;border-radius:8px;padding:16px;margin:16px 0;overflow-x:auto}
+.code code{font-family:'Fira Code',monospace;font-size:0.9rem;color:#e0e0e0;white-space:pre}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;margin:40px 0}
+.stat{text-align:center;padding:20px;background:#111;border-radius:12px;border:1px solid #222}
+.stat .num{font-size:2.5rem;font-weight:700;color:#00d2ff}
+.stat .label{color:#888;font-size:0.9rem}
+.ecosystem{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin:30px 0}
+.product{background:#111;border-radius:12px;padding:24px;border:1px solid #222;transition:border-color 0.3s}
+.product:hover{border-color:#00d2ff}
+.product h4{color:#00d2ff;margin-bottom:8px}
+.product p{color:#888;font-size:0.9rem}
+.product a{color:#3a7bd5;text-decoration:none;font-size:0.85rem}
+.story{background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:16px;padding:40px;margin:40px 0}
+.story h3{color:#00d2ff;font-size:1.5rem;margin-bottom:16px}
+.story p{color:#bbb;margin-bottom:12px}
+footer{text-align:center;padding:40px 20px;border-top:1px solid #222;color:#555}
+footer a{color:#3a7bd5;text-decoration:none}
+.compare{width:100%;border-collapse:collapse;margin:24px 0}
+.compare th,.compare td{padding:12px 16px;text-align:left;border-bottom:1px solid #222}
+.compare th{color:#00d2ff;font-weight:600}
+.compare td{color:#aaa}
+.compare .check{color:#00d2ff}
+.compare .cross{color:#e74c3c}
+.tag{display:inline-block;background:#1a1a2e;color:#00d2ff;padding:4px 12px;border-radius:12px;font-size:0.8rem;margin:4px}
+@media(max-width:600px){.hero h1{font-size:2rem}.section h2{font-size:1.5rem}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+<h1>🍲 Stew Code</h1>
+<p class="tagline">The free, zero-dependency AI coding agent that lives in your terminal. Built in Nigeria. For the world.</p>
+<div class="badges">
+<span class="badge">📦 Zero Dependencies</span>
+<span class="badge">🔬 Security Scanner</span>
+<span class="badge">🏃 Marathon Mode</span>
+<span class="badge">🔨 Skill Forge</span>
+<span class="badge">🌍 Dev Environment Setup</span>
+<span class="badge">🆓 Free Forever</span>
+</div>
+<div class="install">
+<code>npm install -g stew-ai && stew code</code>
+</div>
+<div class="cta">
+<a class="primary" href="https://www.npmjs.com/package/stew-ai">Install on npm</a>
+<a class="secondary" href="https://github.com/emmanuelerogian723-alt/stew-ai">GitHub Repo</a>
+</div>
+</div>
+
+<div class="section">
+<h2>Why Stew Code Exists</h2>
+<div class="story">
+<h3>The Problem</h3>
+<p>Most AI coding tools — GitHub Copilot ($10/month), Cursor ($20/month), Tabnine ($12/month) — are priced for Silicon Valley salaries. A developer in Lagos, Abuja, or Enugu earning in Naira can't justify $20/month for a coding assistant.</p>
+<h3>The Solution</h3>
+<p>Stew Code is a terminal-based AI coding agent that costs nothing to install and runs on any laptop with Node.js 18+. No subscriptions. No credit card. No bloat. Just raw coding power in your terminal, built by a Nigerian developer who understands the struggle.</p>
+<h3>The Mission</h3>
+<p>Give every African developer world-class AI coding tools — for free. No paywalls, no gatekeeping, no "Pro tier" for basic features. The code is open source. The community owns it.</p>
+</div>
+</div>
+
+<div class="section">
+<h2>What Stew Code Can Do</h2>
+
+<div class="feature">
+<h4>🤖 AI Coding Assistant</h4>
+<p>Chat with AI in your terminal. Read/write files, run shell commands, search the web. Supports 6 AI providers (Groq, Mistral, NVIDIA, OpenRouter, HuggingFace, OpenAI) with automatic failover. Streaming responses, multi-line input, 12 personas.</p>
+</div>
+
+<div class="feature">
+<h4>🔬 Security Scanner</h4>
+<p>Scan your codebase for hardcoded secrets, API keys, passwords, injection vulnerabilities (eval, exec, innerHTML), phishing patterns, and malware indicators. 20+ pattern matchers with threat scoring from LOW to CRITICAL.</p>
+</div>
+
+<div class="feature">
+<h4>✅ Self-Verification</h4>
+<p>Stew Code verifies its own output. After writing code, it runs 3-pass verification: syntax check, logic review, and security audit. If something fails, it auto-retries with fixes up to 3 times.</p>
+</div>
+
+<div class="feature">
+<h4>🏃 Marathon Mode</h4>
+<p>Give Stew Code a goal and let it run for hours. It plans, executes, checkpoints to disk, and self-heals on errors. Kill your terminal, come back tomorrow — it resumes exactly where it left off.</p>
+</div>
+
+<div class="feature">
+<h4>🔨 Skill Forge</h4>
+<p>When Stew Code encounters a task it can't do, it writes a new skill for itself and starts using it immediately. No plugins. No marketplace. Just self-improvement. 16 built-in skills + unlimited custom skills.</p>
+</div>
+
+<div class="feature">
+<h4>🌍 Dev Environment Setup</h4>
+<p>One command sets up your entire dev environment. <code>/setup vscode</code> creates VS Code config files (settings, launch, tasks, extensions). <code>/setup opencode</code> creates OpenCode config. <code>/setup all</code> does everything + .editorconfig.</p>
+</div>
+
+<div class="feature">
+<h4>🕷️ Web Scraper & Crawler</h4>
+<p>Scrape any URL or crawl entire websites. Extract clean text, links, and metadata. No API key needed. Perfect for data collection, research, and competitive analysis.</p>
+</div>
+
+<div class="feature">
+<h4>🔌 API Caller</h4>
+<p>Call any REST or GraphQL API from the terminal. Custom headers, JSON bodies, query parameters, bearer auth. Built-in curl-style flag parsing.</p>
+</div>
+
+<div class="feature">
+<h4>🎭 12 Personas</h4>
+<p>Switch between developer, doctor, lawyer, consultant, researcher, writer, teacher, analyst, architect, designer, marketer, and comedian modes. Each with specialized system prompts.</p>
+</div>
+
+<div class="feature">
+<h4>🎭 Mascot</h4>
+<p>Stew Code has a face. ANSI art that reacts to what's happening: thinking, working, success, error, and marathon states. Because coding should be fun.</p>
+</div>
+</div>
+
+<div class="section">
+<h2>Stew Code vs The Competition</h2>
+<table class="compare">
+<tr><th>Feature</th><th>Stew Code</th><th>GitHub Copilot</th><th>Cursor</th></tr>
+<tr><td>Price</td><td class="check">Free</td><td>$10/month</td><td>$20/month</td></tr>
+<tr><td>Dependencies</td><td class="check">Zero</td><td class="cross">VS Code extension</td><td class="cross">Full IDE</td></tr>
+<tr><td>Package size</td><td class="check">49.9KB</td><td>~100MB+</td><td>~300MB+</td></tr>
+<tr><td>Security scanner</td><td class="check">Built-in</td><td class="cross">No</td><td class="cross">No</td></tr>
+<tr><td>Self-verification</td><td class="check">Built-in</td><td class="cross">No</td><td class="cross">No</td></tr>
+<tr><td>Marathon mode</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td></tr>
+<tr><td>Skill creation</td><td class="check">Self-forging</td><td class="cross">No</td><td class="cross">No</td></tr>
+<tr><td>Dev environment setup</td><td class="check">Built-in</td><td class="cross">No</td><td class="cross">No</td></tr>
+<tr><td>Works offline</td><td class="check">Partially</td><td class="cross">No</td><td class="cross">No</td></tr>
+<tr><td>Open source</td><td class="check">Yes (MIT)</td><td class="cross">No</td><td class="cross">No</td></tr>
+<tr><td>Built in Africa</td><td class="check">🇳🇬 Nigeria</td><td class="cross">USA</td><td class="cross">USA</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>16 Built-in Skills</h2>
+<div>
+<span class="tag">scaffold</span><span class="tag">test</span><span class="tag">docker</span><span class="tag">ci</span><span class="tag">env</span><span class="tag">gitignore</span><span class="tag">deps</span><span class="tag">explain</span><span class="tag">security</span><span class="tag">size</span><span class="tag">translate</span><span class="tag">refactor</span><span class="tag">document</span><span class="tag">clean</span><span class="tag">loc</span><span class="tag">format</span>
+</div>
+<p style="margin-top:16px;color:#888">Plus unlimited custom skills via Skill Forge. Stew Code writes new skills for itself when it encounters tasks it can't do.</p>
+</div>
+
+<div class="section">
+<h2>The Stew Ecosystem</h2>
+<div class="ecosystem">
+<div class="product">
+<h4>🍲 Stew Code</h4>
+<p>Terminal AI coding agent. Zero deps. 49.9KB. Security scanner, marathon mode, 16+ skills.</p>
+<a href="https://www.npmjs.com/package/stew-ai">npm → stew-ai</a><br>
+<a href="https://github.com/emmanuelerogian723-alt/stew-ai">GitHub → stew-ai</a>
+</div>
+<div class="product">
+<h4>🤖 Stew Agent API</h4>
+<p>OpenAI-compatible AI agent API. 59 skills, 100-agent swarm, 12 personas, 6 AI providers. Deployed on Render.</p>
+<a href="https://stew-agent.onrender.com">API → stew-agent.onrender.com</a><br>
+<a href="https://github.com/emmanuelerogian723-alt/Stew-agent">GitHub → Stew-agent</a>
+</div>
+<div class="product">
+<h4>💬 Stew Bot (Telegram)</h4>
+<p>Telegram bot powered by Stew Agent. Song generation, image generation, OCR, document creation. Free.</p>
+<a href="https://t.me/stew_agent_bot">Telegram → @stew_agent_bot</a><br>
+<a href="https://github.com/emmanuelerogian723-alt/Stew-agent">GitHub → Stew-agent</a>
+</div>
+<div class="product">
+<h4>🐍 Stew Python SDK</h4>
+<p>Zero-dependency Python SDK for the Stew Agent API. Python 3.8+. urllib only.</p>
+<a href="https://github.com/emmanuelerogian723-alt/stew-python">GitHub → stew-python</a>
+</div>
+<div class="product">
+<h4>🏢 EROGIAN</h4>
+<p>The digital studio behind Stew. Building AI products for the African market from Enugu, Nigeria.</p>
+<a href="https://github.com/emmanuelerogian723-alt">GitHub → emmanuelerogian723-alt</a>
+</div>
+</div>
+</div>
+
+<div class="section">
+<h2>Quick Start</h2>
+<div class="code"><code># Install
+npm install -g stew-ai
+
+# Launch the AI coding REPL
+stew code
+
+# Or use individual commands
+stew scrape https://example.com
+stew api GET https://api.github.com/users/defunkt
+stew marathon "Build a REST API with tests"
+stew skills</code>
+</div>
+
+<h3>Slash commands in the REPL</h3>
+<div class="code"><code>/help          Show all commands
+/setup vscode  Set up VS Code environment
+/scan          Security scan your code
+/verify        Verify session files
+/endurance 4   Run for 4 hours
+/web search    Search the internet
+/model         Switch AI model
+/skills        List all skills
+/forge deploy  Create a custom skill
+/marathon      Start marathon mode
+/git           Git status
+/files         List project files</code>
+</div>
+</div>
+
+<div class="section">
+<h2>Built in Nigeria, For the World 🇳🇬</h2>
+<div class="story">
+<p>Stew Code was built by Emmanuel Erog (EROGIAN) in Enugu, Nigeria. It was born from a simple frustration: African developers deserve world-class AI tools without paying Silicon Valley prices.</p>
+<p>Nigeria has 5+ million developers. Africa has the fastest-growing developer population in the world. Yet most AI coding tools ignore this market — too expensive, too bloated, too disconnected from how we actually work.</p>
+<p>Stew Code changes that. It's 49.9KB. It has zero dependencies. It runs on any laptop. It's free. And it's built by someone who understands the Nigerian developer's reality — unstable internet, Naira-denominated income, and a burning desire to build world-class software.</p>
+<p>This isn't charity. This isn't a stripped-down "emerging market" version. This is the full-featured tool, given to the world, built from Africa.</p>
+</div>
+</div>
+
+<div class="section">
+<h2>Stats</h2>
+<div class="stats">
+<div class="stat"><div class="num">49.9</div><div class="label">KB package size</div></div>
+<div class="stat"><div class="num">0</div><div class="label">dependencies</div></div>
+<div class="stat"><div class="num">16+</div><div class="label">built-in skills</div></div>
+<div class="stat"><div class="num">6</div><div class="label">AI providers</div></div>
+<div class="stat"><div class="num">12</div><div class="label">personas</div></div>
+<div class="stat"><div class="num">59</div><div class="label">API skills</div></div>
+<div class="stat"><div class="num">100</div><div class="label">agent swarm</div></div>
+<div class="stat"><div class="num">$0</div><div class="label">price</div></div>
+</div>
+</div>
+
+<div class="section">
+<h2>Connect</h2>
+<p style="margin-bottom:20px">
+<strong>npm:</strong> <a href="https://www.npmjs.com/package/stew-ai" style="color:#3a7bd5">npmjs.com/package/stew-ai</a><br>
+<strong>GitHub:</strong> <a href="https://github.com/emmanuelerogian723-alt/stew-ai" style="color:#3a7bd5">github.com/emmanuelerogian723-alt/stew-ai</a><br>
+<strong>Stew Agent API:</strong> <a href="https://stew-agent.onrender.com" style="color:#3a7bd5">stew-agent.onrender.com</a><br>
+<strong>Telegram Bot:</strong> <a href="https://t.me/stew_agent_bot" style="color:#3a7bd5">t.me/stew_agent_bot</a><br>
+<strong>Python SDK:</strong> <a href="https://github.com/emmanuelerogian723-alt/stew-python" style="color:#3a7bd5">github.com/emmanuelerogian723-alt/stew-python</a><br>
+<strong>EROGIAN:</strong> <a href="https://github.com/emmanuelerogian723-alt" style="color:#3a7bd5">github.com/emmanuelerogian723-alt</a>
+</p>
+<p style="color:#555;font-size:0.9rem">MIT License. Built by Emmanuel Erog (EROGIAN) in Enugu, Nigeria. 🇳🇬</p>
+</div>
+
+<footer>
+<p>🍲 Stew Code — Free AI Coding Agent Built in Nigeria</p>
+<p>© 2026 EROGIAN. MIT License.</p>
+</footer>
+
+</body>
+</html>
