@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://emmanuelerogian723-alt.github.io/stew-ai/sitemap.xml
