@@ -223,7 +223,7 @@ function listSkills() {
   var builtins = Object.keys(BUILTIN_SKILLS);
   var custom = [];
   if (fs.existsSync(SKILLS_DIR)) { custom = fs.readdirSync(SKILLS_DIR).filter(f => f.endsWith('.js')).map(f => f.replace('.js', '')); }
-  return { builtins, custom };
+  return { builtins, custom, total: builtins.length + custom.length };
 }
 
 function runSkill(name, args, cwd) {

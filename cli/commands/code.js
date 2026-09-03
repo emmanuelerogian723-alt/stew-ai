@@ -11,6 +11,7 @@ const { BUILTIN_SKILLS, listSkills, runSkill, forgeSkill, deleteSkill } = requir
 const mascot = require('../utils/mascot');
 const adv = require('../utils/advanced');
 const mcp = require('../utils/mcp');
+const { scrape } = require('../utils/scraper');
 const PKG = require('../../package.json');
 
 var C = require('../utils/output').C;
@@ -45,9 +46,9 @@ var SLASH_COMMANDS = [
   ['/save <name>', 'Save session'],
   ['/load <name>', 'Load session'],
   ['/sessions', 'Sessions'],
-  ['/git <sub>', 'Git subcommands'],
+  ['/git <sub>', 'Git ops'],
   ['/run <cmd>', 'Shell command'],
-  ['/undo', 'Undo last change'],
+  ['/undo', 'Revert last write'],
   ['/diff <file>', 'Show diff'],
   ['/status', 'State'],
   ['/build <prompt>', 'Build app from prompt'],
@@ -58,7 +59,7 @@ var SLASH_COMMANDS = [
   ['/voice [on|off]', 'Spoken responses'],
   ['/image <path> [q]', 'Ask about an image'],
   ['/mcp <sub>', 'MCP servers'],
-  ['/sh <cmd>', 'Run a shell command'],
+  ['/sh <cmd>', 'Guarded shell'],
   ['/fix', 'Auto-fix errors'],
   ['/test', 'Tests + auto-fix'],
   ['/doc', 'Generate README.md'],
@@ -93,14 +94,10 @@ async function codeCommand(args) {
   state.projectCtx = projCtx;
 
   function buildSystemPrompt() {
-    var prompt = 'You are Stew Code, the most powerful AI coding agent for the terminal. You help developers write, debug, refactor, test, deploy, and understand code.\n\n';
-    prompt += 'CAPABILITIES: read/write files, shell, web search, code/tests/docs, debug, explain, skills, autonomous tasks, Dockerfile/CI, security audit.\n\n';
-    prompt += 'CURRENT PROJECT:\n';
-    prompt += '- Directory: ' + projCtx.root + '\n';
-    prompt += '- Type: ' + projCtx.type + '\n';
-    prompt += '- Files (' + (projCtx.stats.totalFiles || 0) + '): ' + projCtx.files.slice(0, 30).join(', ');
-    if (projCtx.files.length > 30) prompt += '...';
-    prompt += '\n\nPROJECT STRUCTURE:\n' + (projCtx.structure || '(empty)');
+    var prompt = 'You are Stew Code, an AI coding agent for the terminal. You write, debug, refactor, test, deploy, and explain code.\n\n';
+    prompt += 'CAPABILITIES: files, shell, web search, tests/docs, debug, skills, autonomous tasks, CI, security audit.\n\n';
+    prompt += 'PROJECT:\n- Dir: ' + projCtx.root + '\n- Type: ' + projCtx.type + '\n- Files (' + (projCtx.stats.totalFiles || 0) + '): ' +
+      projCtx.files.slice(0, 30).join(', ') + (projCtx.files.length > 30 ? '...' : '') + '\n\nSTRUCTURE:\n' + (projCtx.structure || '(empty)');
 
     if (projCtx.config) {
       for (var file in projCtx.config) {
@@ -111,25 +108,17 @@ async function codeCommand(args) {
     var rulesPath = path.join(cwd, '.stew', 'rules');
     var stewMdPath = path.join(cwd, 'STEW.md');
     if (fs.existsSync(rulesPath)) {
-      prompt += '\n\nPROJECT RULES (.stew/rules):\n' + fs.readFileSync(rulesPath, 'utf8').slice(0, 3000);
+      prompt += '\n\nRULES:\n' + fs.readFileSync(rulesPath, 'utf8').slice(0, 3000);
     }
     if (fs.existsSync(stewMdPath)) {
-      prompt += '\n\nPROJECT RULES (STEW.md):\n' + fs.readFileSync(stewMdPath, 'utf8').slice(0, 3000);
+      prompt += '\n\nSTEW.md RULES:\n' + fs.readFileSync(stewMdPath, 'utf8').slice(0, 3000);
     }
     var mcpServers = Object.keys(mcp.mcpConfig());
-    if (mcpServers.length) prompt += '\n\nMCP SERVERS (user can run via /mcp run <name> <tool>): ' + mcpServers.join(', ');
+    if (mcpServers.length) prompt += '\n\nMCP SERVERS (run via /mcp run): ' + mcpServers.join(', ');
     var learned = adv.loadLearned();
-    if (learned) prompt += '\n\nLEARNED FIXES (remember these):\n' + learned;
+    if (learned) prompt += '\n\nLEARNED FIXES:\n' + learned;
 
-    prompt += '\n\nBEHAVIOR:\n';
-    prompt += '1. Be concise and direct. Show code, not paragraphs.\n';
-    prompt += '2. When suggesting file changes, use code blocks with filepath on first line:\n';
-    prompt += '   ```lang filepath\n   // filepath: relative/path/to/file.js\n   code here\n   ```\n';
-    prompt += '3. For shell commands, use: ```bash\ncommand here\n```\n';
-    prompt += '4. Always explain what changed and why.\n';
-    prompt += '5. In plan mode, do NOT write files — only explain what you would do.\n';
-    prompt += '6. Match the project\'s existing code style.\n';
-        prompt += '8. Proactively suggest next steps.';
+    prompt += '\n\nBEHAVIOR:\n1. Be concise — show code, not paragraphs.\n2. File changes: code block w/ filepath on first line, e.g. ```lang filepath\n// filepath: path/file.js\ncode\n```\n3. Shell: ```bash\ncmd\n```\n4. Explain what changed and why.\n5. Plan mode: do NOT write files, only explain.\n6. Match existing code style.\n7. Proactively suggest next steps.';
 
     if (state.persona !== 'default' && state.persona !== 'developer') {
       prompt += '\n\nPERSONA: ' + state.persona;
@@ -237,8 +226,16 @@ async function codeCommand(args) {
       }
     }
 
+    var urlRefs = input.match(/https?:\/\/[^\s)>\]"']+/g);
+    for (var u = 0; urlRefs && u < Math.min(urlRefs.length, 2); u++) {
+      try {
+        var page = await scrape(urlRefs[u], { timeout: 12000 });
+        fileContexts += page.ok ? '\n\n--- ' + page.url + ' (' + page.title + ') ---\n' + page.text.slice(0, 4000) + '\n' : '\n\n--- ' + urlRefs[u] + ' fetch failed: ' + (page.error || page.status) + ' ---\n';
+      } catch (e) { fileContexts += '\n\n--- ' + urlRefs[u] + ' fetch failed: ' + e.message + ' ---\n'; }
+    }
+
     if (fileContexts) {
-      state.messages.push({ role: 'user', content: 'Please review these files:\n' + fileContexts });
+      state.messages.push({ role: 'user', content: 'Additional context:\n' + fileContexts });
     }
 
     state.messages.push({ role: 'user', content: expandedInput });
@@ -381,7 +378,7 @@ async function codeCommand(args) {
         break;
 
       case 'read': case 'cat':
-        if (!args) { console.log(C.red + 'Usage: /read <filepath>' + C.reset); break; }
+        if (!args) { console.log(C.red + 'Usage: /read <file>' + C.reset); break; }
         var readPath = path.resolve(cwd, args);
         if (!fs.existsSync(readPath)) { console.log(C.red + 'File not found: ' + args + C.reset); break; }
         var fc = readFileSync(readPath);
@@ -458,7 +455,7 @@ async function codeCommand(args) {
         break;
 
       case 'skill':
-        if (!args) { console.log(C.red + 'Usage: /skill <name> [args]' + C.reset + '\n'); break; }
+        if (!args) { console.log(C.red + 'Usage: /skill <name>' + C.reset + '\n'); break; }
         var skillParts = args.split(/\s+/);
         var skillName = skillParts[0];
         var skillArgs = skillParts.slice(1);
@@ -475,7 +472,7 @@ async function codeCommand(args) {
         break;
 
       case 'forge':
-        if (!args) { console.log(C.red + 'Usage: /forge <skill-name> <description>' + C.reset + '\n'); break; }
+        if (!args) { console.log(C.red + 'Usage: /forge <name> <desc>' + C.reset + '\n'); break; }
         var forgeParts = args.split(/\s+/);
         var forgeName = forgeParts[0];
         var forgeDesc = forgeParts.slice(1).join(' ');
@@ -486,19 +483,19 @@ async function codeCommand(args) {
         break;
 
       case 'unforge':
-        if (!args) { console.log(C.red + 'Usage: /unforge <skill-name>' + C.reset + '\n'); break; }
+        if (!args) { console.log(C.red + 'Usage: /unforge <name>' + C.reset + '\n'); break; }
         var deleted = deleteSkill(args.trim());
         console.log((deleted.success ? C.green : C.red) + deleted.output + C.reset + '\n');
         break;
 
       case 'agent':
-        if (!args) { console.log(C.red + 'Usage: /agent <task description>' + C.reset); console.log(C.dim + 'Example: /agent fix all TypeScript errors' + C.reset + '\n'); break; }
+        if (!args) { console.log(C.red + 'Usage: /agent <task>' + C.reset); console.log(C.dim + 'Example: /agent fix all TS errors' + C.reset + '\n'); break; }
         var { runAgent } = require('../utils/agent-engine');
         await runAgent(client, args, cwd, { autoApply: !state.planMode });
         break;
 
       case 'marathon':
-        if (!args) { console.log(C.red + 'Usage: /marathon <goal> [--hours N]' + C.reset); console.log(C.dim + 'Example: /marathon build a full REST API with auth and tests --hours 6' + C.reset + '\n'); break; }
+        if (!args) { console.log(C.red + 'Usage: /marathon <goal> [-h N]' + C.reset); console.log(C.dim + 'Example: /marathon build a REST API with auth --hours 6' + C.reset + '\n'); break; }
         var marathonArgs = args.split(/\s+--hours\s+/);
         var marathonGoal = marathonArgs[0];
         var marathonHours = marathonArgs[1] ? parseFloat(marathonArgs[1]) : 4;
@@ -589,7 +586,7 @@ async function codeCommand(args) {
         break;
 
       case 'diff':
-        if (!args) { console.log(C.red + 'Usage: /diff <filepath>' + C.reset + '\n'); break; }
+        if (!args) { console.log(C.red + 'Usage: /diff <file>' + C.reset + '\n'); break; }
         var diffPath = path.resolve(cwd, args);
         if (!fs.existsSync(diffPath)) { console.log(C.red + 'File not found: ' + args + C.reset + '\n'); break; }
         if (git.isGitRepo(cwd)) {
@@ -678,7 +675,7 @@ async function codeCommand(args) {
         break;
 
       case 'install': case 'i':
-        if (!args) { console.log(C.red + 'Usage: /install <package>' + C.reset + '\n'); break; }
+        if (!args) { console.log(C.red + 'Usage: /install <pkg>' + C.reset + '\n'); break; }
         try { execSync('npm install ' + args, { cwd: cwd, stdio: 'inherit' }); console.log(C.green + '  Installed: ' + args + C.reset + '\n'); }
         catch(e) { console.log(C.red + '  Failed: ' + e.message + C.reset + '\n'); }
         break;
@@ -703,7 +700,7 @@ async function codeCommand(args) {
         break;
 
       case 'build': case 'app':
-        if (!args) { console.log(C.red + 'Usage: /build <what to build>' + C.reset + '\n' + C.dim + '  e.g. /build a todo app with express and sqlite' + C.reset + '\n'); break; }
+        if (!args) { console.log(C.red + 'Usage: /build <what to build>' + C.reset + '\n' + C.dim + '  e.g. /build a todo app w/ express + sqlite' + C.reset + '\n'); break; }
         console.log(C.bold + C.cyan + '  🍲 Stew Builder — prompt to finished app' + C.reset);
         console.log(C.dim + '  Plan → generate → verify → fix → install → git' + C.reset + '\n');
         try {
