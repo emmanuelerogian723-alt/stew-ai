@@ -102,19 +102,6 @@ async function executeStep(client, step, cwd, messages) {
         return { ok: false, output: e.message };
       }
     }
-    case 'api': {
-      try {
-        var apiInput = target;
-        if (step.method) apiInput = step.method + ' ' + apiInput;
-        var apiRes = await smartCall(apiInput, { headers: step.headers, timeout: step.timeout || 15000 });
-        console.log(' ' + (apiRes.ok ? C.green + 'API ' + apiRes.status : C.red + 'API ' + apiRes.status) + C.reset);
-        var apiOut = typeof apiRes.data === 'object' ? JSON.stringify(apiRes.data).slice(0, 2000) : String(apiRes.data || '').slice(0, 2000);
-        return { ok: apiRes.ok, output: apiOut };
-      } catch (e) {
-        console.log(' ' + C.red + 'FAILED' + C.reset);
-        return { ok: false, output: e.message };
-      }
-    }
     case 'skill': {
       var skillArgs = step.args || [];
       var result = runSkill(target, skillArgs, cwd);

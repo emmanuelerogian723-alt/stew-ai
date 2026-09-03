@@ -7,7 +7,6 @@ const { listFiles, projectContext } = require('./files');
 const { runSkill } = require('./skill-forge');
 const mascot = require('./mascot');
 const { scrape } = require('./scraper');
-const { smartCall } = require('./apicaller');
 var C = {
   reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m',
   red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
@@ -133,13 +132,6 @@ async function executeOne(client, step, cwd) {
         var page = await scrape(sUrl, { timeout: 15000 });
         if (!page.ok) return { ok: false, output: 'Failed: ' + (page.error || 'HTTP ' + page.status) };
         return { ok: true, output: ('Title: ' + page.title + '\n' + page.text).slice(0, 3000) };
-      }
-      case 'api': {
-        var apiInput = target;
-        if (step.method) apiInput = step.method + ' ' + apiInput;
-        var apiRes = await smartCall(apiInput, { headers: step.headers, timeout: 15000 });
-        var apiOut = typeof apiRes.data === 'object' ? JSON.stringify(apiRes.data).slice(0, 2000) : String(apiRes.data || '').slice(0, 2000);
-        return { ok: apiRes.ok, output: apiOut };
       }
       case 'analyze':
       default: {

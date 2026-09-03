@@ -5,12 +5,12 @@ const readline = require('readline');
 const { getApiKey } = require('../utils/config');
 const { StewClient } = require('../../lib/client');
 const { streamChatCompletion } = require('../../lib/stream');
-const { highlightCode, detectLang } = require('../utils/highlight');
 const { readFileSync, listFiles, projectContext, diff, UndoStack } = require('../utils/files');
 const git = require('../utils/git');
 const { saveSession, loadSession, listSessions, deleteSession } = require('../utils/session');
 const { BUILTIN_SKILLS, listSkills, runSkill, forgeSkill, deleteSkill } = require('../utils/skill-forge');
 const mascot = require('../utils/mascot');
+const adv = require('../utils/advanced');
 
 var C = {
   reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', italic: '\x1b[3m',
@@ -40,26 +40,35 @@ var PERSONAS = [
 var SLASH_COMMANDS = [
   ['/help', 'Show all commands'],
   ['/files [pattern]', 'List project files'],
-  ['/read <file>', 'Read a file into context'],
+  ['/read <file>', 'Read a file'],
   ['/clear', 'Clear conversation'],
-  ['/model [name]', 'Show/set AI model'],
+  ['/model [name]', 'Show/set model'],
   ['/persona [name]', 'Show/set persona'],
   ['/web [on|off]', 'Toggle web search'],
-  ['/plan [on|off]', 'Plan mode (no file writes)'],
-  ['/skill <name> [args]', 'Run a built-in or custom skill'],
-  ['/skills', 'List all available skills'],
-  ['/forge <name> <desc>', 'Create a new skill (Skill Forge)'],
+  ['/plan [on|off]', 'Plan mode'],
+  ['/skill <name> [args]', 'Run a skill'],
+  ['/skills', 'List all skills'],
+  ['/forge <name> <desc>', 'Create a new skill'],
   ['/unforge <name>', 'Delete a custom skill'],
-  ['/agent <task>', 'Autonomous agent mode'],
-  ['/marathon <goal> [--hours N]', 'Run for HOURS — checkpointed, self re-planning'],
+  ['/agent <task>', 'Autonomous mode'],
+  ['/marathon <goal> [-h N]', 'Run for hours — checkpointed'],
   ['/save <name>', 'Save session'],
   ['/load <name>', 'Load session'],
-  ['/sessions', 'List saved sessions'],
-  ['/git <sub>', 'Git: status, diff, log, commit'],
+  ['/sessions', 'List sessions'],
+  ['/git <sub>', 'Git: status|diff|log|commit'],
   ['/run <cmd>', 'Execute shell command'],
-  ['/undo', 'Undo last file change'],
-  ['/diff <file>', 'Show diff of a file'],
-  ['/status', 'Show Stew Code state'],
+  ['/undo', 'Undo last change'],
+  ['/diff <file>', 'Show diff'],
+  ['/status', 'Show state'],
+  ['/build <prompt>', 'Build an app from a prompt'],
+  ['/explain <question>', 'Ask how the codebase works'],
+  ['/review [file]', 'AI code review'],
+  ['/swarm <task>', 'Multi-agent team build'],
+  ['/changelog', 'Generate CHANGELOG.md'],
+  ['/sh <cmd>', 'Run a shell command'],
+  ['/fix', 'Auto-fix all errors in the project'],
+  ['/test', 'Run tests + auto-fix'],
+  ['/doc', 'Generate README.md from your code'],
   ['/exit', 'Exit'],
 ];
 
@@ -92,18 +101,7 @@ async function codeCommand(args) {
 
   function buildSystemPrompt() {
     var prompt = 'You are Stew Code, the most powerful AI coding agent for the terminal. You help developers write, debug, refactor, test, deploy, and understand code.\n\n';
-    prompt += 'CAPABILITIES:\n';
-    prompt += '- Read and write files in the user\'s project\n';
-    prompt += '- Execute shell commands\n';
-    prompt += '- Search the web for documentation\n';
-    prompt += '- Generate code, tests, and documentation\n';
-    prompt += '- Debug and fix issues\n';
-    prompt += '- Explain code and architecture\n';
-    prompt += '- Create reusable skills via Skill Forge\n';
-    prompt += '- Run autonomous agent tasks\n';
-    prompt += '- Scaffold new projects\n';
-    prompt += '- Generate Dockerfiles, CI/CD, tests, docs\n';
-    prompt += '- Security audit, dependency check\n\n';
+    prompt += 'CAPABILITIES: read/write files, run shell commands, web search, generate code/tests/docs, debug, explain, Skill Forge, autonomous tasks, scaffolding, Dockerfile/CI, security audit.\n\n';
     prompt += 'CURRENT PROJECT:\n';
     prompt += '- Directory: ' + projCtx.root + '\n';
     prompt += '- Type: ' + projCtx.type + '\n';
@@ -125,6 +123,8 @@ async function codeCommand(args) {
     if (fs.existsSync(stewMdPath)) {
       prompt += '\n\nPROJECT RULES (STEW.md):\n' + fs.readFileSync(stewMdPath, 'utf8').slice(0, 3000);
     }
+    var learned = adv.loadLearned();
+    if (learned) prompt += '\n\nLEARNED FIXES (remember these):\n' + learned;
 
     prompt += '\n\nBEHAVIOR:\n';
     prompt += '1. Be concise and direct. Show code, not paragraphs.\n';
@@ -377,10 +377,10 @@ async function codeCommand(args) {
         var readPath = path.resolve(cwd, args);
         if (!fs.existsSync(readPath)) { console.log(C.red + 'File not found: ' + args + C.reset); break; }
         var fc = readFileSync(readPath);
-        var lang = detectLang(args);
-        console.log('\n' + C.bold + args + C.reset + ' ' + C.dim + '(' + lang + ')' + C.reset);
+
+        console.log('\n' + C.bold + args + C.reset);
         console.log(C.dim + '─'.repeat(60) + C.reset);
-        console.log(highlightCode(fc.content, lang));
+        console.log(fc.content);
         if (fc.truncated) console.log(C.yellow + '\n[...truncated]' + C.reset);
         console.log(C.dim + '─'.repeat(60) + C.reset + '\n');
         state.messages.push({ role: 'user', content: 'Read file ' + args + ':\n' + fc.content });
@@ -606,8 +606,6 @@ async function codeCommand(args) {
         console.log('  Skills forged: ' + state.skillsForged);
         console.log('  Undo stack: ' + state.undoStack.stack.length);
         console.log('  Project: ' + C.dim + projCtx.root + C.reset + ' (' + projCtx.type + ')');
-        var sk = listSkills();
-        console.log('  Skills: ' + sk.total + ' (' + sk.builtin.length + ' built-in, ' + sk.custom.length + ' custom)');
         if (git.isGitRepo(cwd)) {
           var gss = git.status(cwd);
           console.log('  Git: ' + C.cyan + gss.branch + C.reset + ' ' + (gss.changes.length > 0 ? C.yellow + '(' + gss.changes.length + ' changes)' : C.green + '(clean)') + C.reset);
@@ -651,78 +649,23 @@ async function codeCommand(args) {
         console.log('');
         break;
 
-      case 'heal': case 'selfheal':
-        console.log(C.cyan + '  Self-Heal Report' + C.reset);
-        var healed = 0;
-        if (state.sessionFiles) {
-          for (var fp in state.sessionFiles) {
-            var code = state.sessionFiles[fp];
-            var vr = adv.verifyCode(code, fp);
-            if (!vr.allPass) {
-              console.log(C.yellow + '  Fixing ' + fp + C.reset);
-              if (vr.passes.syntax.issues.length) console.log(C.dim + '    Syntax: ' + vr.passes.syntax.issues[0] + C.reset);
-              if (vr.passes.security.issues.length) console.log(C.dim + '    Security: ' + vr.passes.security.issues[0] + C.reset);
-              healed++;
-            }
-          }
-        }
-        console.log(healed ? C.yellow + '  ' + healed + ' file(s) need attention' : C.green + '  All files healthy' + C.reset + '\n');
-        break;
-
-      case 'endurance': case 'endure':
-        if (!args) { console.log(C.red + 'Usage: /endurance <h> [task]' + C.reset + '\n'); break; }
-        var eh = parseInt(args.split(' ')[0]) || 1;
-        var etask = args.split(' ').slice(1).join(' ') || 'continuous work';
-        var endurance = adv.startEndurance(etask, eh);
-        console.log(C.bold + C.cyan + '  Endurance Mode' + C.reset);
-        console.log(C.dim + '  Duration: ' + eh + ' hour(s)' + C.reset);
-        console.log(C.dim + '  Task: ' + etask + C.reset);
-        console.log(C.dim + '  Self-heal: ON' + C.reset);
-        endurance.checkpoint('start');
-        console.log(C.green + '  Started. Stew will keep working until done or expired.' + C.reset + '\n');
-        break;
-
       case 'setup': case 'init': case 'env':
         var setupType = args || 'vscode';
         var vscodeDir = path.join(cwd, '.vscode');
         fs.mkdirSync(vscodeDir, { recursive: true });
         if (setupType === 'vscode' || setupType === 'code') {
-          fs.writeFileSync(path.join(vscodeDir, 'settings.json'), JSON.stringify({
-            'editor.fontSize': 14, 'editor.tabSize': 2, 'editor.formatOnSave': true,
-            'editor.minimap.enabled': false, 'editor.wordWrap': 'on',
-            'files.autoSave': 'afterDelay', 'terminal.integrated.fontSize': 13,
-            'editor.bracketPairColorization.enabled': true,
-            'workbench.colorTheme': 'Default Dark+',
-          }, null, 2));
-          fs.writeFileSync(path.join(vscodeDir, 'launch.json'), JSON.stringify({
-            version: '0.2.0', configurations: [
-              { type: 'node', request: 'launch', name: 'Debug', program: '${workspaceFolder}/index.js', skipFiles: ['<node_internals>/**'] },
-            ]
-          }, null, 2));
-          fs.writeFileSync(path.join(vscodeDir, 'tasks.json'), JSON.stringify({
-            version: '2.0.0', tasks: [
-              { label: 'Build', type: 'shell', command: 'npm run build', group: { kind: 'build', isDefault: true } },
-              { label: 'Test', type: 'shell', command: 'npm test', group: { kind: 'test', isDefault: true } },
-              { label: 'Serve', type: 'shell', command: 'npm start' },
-            ]
-          }, null, 2));
-          fs.writeFileSync(path.join(vscodeDir, 'extensions.json'), JSON.stringify({
-            recommendations: ['esbenp.prettier-vscode', 'dbaeumer.vscode-eslint', 'ms-python.python', 'bradlc.vscode-tailwindcss']
-          }, null, 2));
-          console.log(C.green + '  VS Code environment set up!' + C.reset);
-          console.log(C.dim + '  Created: .vscode/ (4 files)' + C.reset + '\n');
+          var vs = {
+            'settings.json': { 'editor.fontSize': 14, 'editor.tabSize': 2, 'editor.formatOnSave': true, 'editor.minimap.enabled': false, 'editor.wordWrap': 'on', 'files.autoSave': 'afterDelay', 'workbench.colorTheme': 'Default Dark+' },
+            'launch.json': { version: '0.2.0', configurations: [{ type: 'node', request: 'launch', name: 'Debug', program: '${workspaceFolder}/index.js' }] },
+            'tasks.json': { version: '2.0.0', tasks: [{ label: 'Build', type: 'shell', command: 'npm run build', group: { kind: 'build', isDefault: true } }, { label: 'Test', type: 'shell', command: 'npm test' }, { label: 'Serve', type: 'shell', command: 'npm start' }] },
+            'extensions.json': { recommendations: ['esbenp.prettier-vscode', 'dbaeumer.vscode-eslint', 'bradlc.vscode-tailwindcss'] }
+          };
+          for (var vf in vs) fs.writeFileSync(path.join(vscodeDir, vf), JSON.stringify(vs[vf], null, 2));
+          console.log(C.green + '  .vscode/ created (4 files)' + C.reset + '\n');
         }
-        if (setupType === 'opencode' || setupType === 'all') {
-          fs.writeFileSync(path.join(cwd, 'opencode.json'), JSON.stringify({
-            model: 'stew-default', autoExecute: true, autoCommit: false,
-            tabSize: 2, theme: 'dark', streaming: true,
-          }, null, 2));
-          console.log(C.green + '  OpenCode config created!' + C.reset);
-          console.log(C.dim + '  Created: opencode.json' + C.reset + '\n');
-        }
-        if (setupType === 'all' || setupType === 'vscode') {
-          fs.writeFileSync(path.join(cwd, '.editorconfig'), 'root = true\n\n[*]\ncharset = utf-8\nend_of_line = lf\nindent_size = 2\nindent_style = space\ninsert_final_newline = true\ntrim_trailing_whitespace = true\n');
-          console.log(C.dim + '  Created: .editorconfig' + C.reset);
+        if (setupType === 'all') {
+          fs.writeFileSync(path.join(cwd, '.editorconfig'), 'root = true\n\n[*]\ncharset = utf-8\nend_of_line = lf\nindent_size = 2\nindent_style = space\ninsert_final_newline = true\n');
+          console.log(C.green + '  .editorconfig created' + C.reset + '\n');
         }
         break;
 
@@ -751,13 +694,48 @@ async function codeCommand(args) {
         catch(e) { console.log(C.red + '  Failed: ' + e.message + C.reset + '\n'); }
         break;
 
-      case 'create':
-        if (!args) { console.log(C.red + 'Usage: /create <type> <prompt>' + C.reset + '\n'); break; }
-        var parts_c = args.split(' ');
-        var cType = parts_c[0], cPrompt = parts_c.slice(1).join(' ');
-        if (!cPrompt) { console.log(C.red + 'Usage: /create <type> <prompt>' + C.reset + '\n'); break; }
-        state.messages.push({ role: 'user', content: 'Create a ' + cType + ' file about: ' + cPrompt + '. Generate the full content.' });
-        console.log(C.dim + '  Generating ' + cType + '...' + C.reset + '\n');
+      case 'build': case 'app':
+        if (!args) { console.log(C.red + 'Usage: /build <what to build>' + C.reset + '\n' + C.dim + '  e.g. /build a todo app with express and sqlite' + C.reset + '\n'); break; }
+        console.log(C.bold + C.cyan + '  🍲 Stew Builder — prompt to finished app' + C.reset);
+        console.log(C.dim + '  Plan → generate → verify → fix → install → git' + C.reset + '\n');
+        try {
+          var bres = await adv.buildApp(args, client, { cwd: cwd, model: state.model });
+          if (bres.error) { console.log(C.red + '  ' + bres.error + C.reset + '\n'); break; }
+          console.log(C.bold + C.green + '  ✓ Build complete!' + C.reset);
+          console.log(C.dim + '  Project: ' + bres.name + '/' + C.reset);
+          for (var bf of bres.files) console.log(C.green + '    ✓ ' + bf + C.reset);
+          for (var bff of bres.failed) console.log(C.yellow + '    ! ' + bff + ' (still has issues)' + C.reset);
+          if (bres.fixed) console.log(C.dim + '    Auto-fixed ' + bres.fixed + ' issue(s)' + C.reset);
+          for (var bt of bres.threats) console.log(C.yellow + '    ⚠ security: ' + bt + C.reset);
+          console.log('\n' + C.bold + '  Run it:' + C.reset + '  cd ' + bres.name + ' && ' + bres.run + '\n');
+        } catch (be) { console.log(C.red + '  Build failed: ' + be.message + C.reset + '\n'); }
+        break;
+
+      case 'fix': case 'heal': case 'selfheal':
+        console.log(C.cyan + '  🔧 Auto-fixing project...' + C.reset);
+        try {
+          var fres = await adv.fixProject(client, { cwd: cwd, model: state.model });
+          console.log(fres.fixed.length ? C.green + '  ✓ Fixed ' + fres.fixed.length + ' file(s): ' + fres.fixed.join(', ') + C.reset : C.dim + '  No fixable errors found.' + C.reset);
+          for (var fe of fres.remaining) console.log(C.yellow + '  ! Could not fix: ' + fe + C.reset);
+          console.log('');
+        } catch (fxe) { console.log(C.red + '  Fix failed: ' + fxe.message + C.reset + '\n'); }
+        break;
+
+      case 'test':
+        console.log(C.cyan + '  🧪 Running tests with auto-fix...' + C.reset);
+        try {
+          var tres = await adv.testProject(client, { cwd: cwd, model: state.model });
+          console.log(tres.pass ? C.green + '  ✓ All tests passed' + C.reset : C.yellow + '  Tests still failing after ' + tres.rounds + ' fix round(s)' + C.reset);
+          console.log('');
+        } catch (te) { console.log(C.red + '  Test failed: ' + te.message + C.reset + '\n'); }
+        break;
+
+      case 'doc': case 'docs':
+        console.log(C.cyan + '  📝 Generating README.md...' + C.reset);
+        try {
+          var dres = await adv.genDocs(client, { cwd: cwd, model: state.model });
+          console.log(dres.error ? C.red + '  ' + dres.error + C.reset : C.green + '  ✓ ' + dres + C.reset + '\n');
+        } catch (de) { console.log(C.red + '  Doc failed: ' + de.message + C.reset + '\n'); }
         break;
 
       default:

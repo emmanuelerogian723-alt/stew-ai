@@ -19,38 +19,8 @@ function idle() {
     '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
 }
 
-function thinking() {
-  return '\n' +
-    '       ' + C.steam + '~ ? ~' + C.reset + '\n' +
-    '      ' + C.steam + '(     )' + C.reset + '\n' +
-    '    ' + C.orange + '╱' + C.lightorange + '▔▔▔▔▔▔▔' + C.orange + '╲' + C.reset + '\n' +
-    '   ' + C.orange + '│' + C.lightorange + ' ◔     ◔ ' + C.orange + '│' + C.reset + '  ' + C.bold + C.cyan + 'STEW' + C.reset + '\n' +
-    '   ' + C.orange + '│' + C.lightorange + '   ‿    ' + C.orange + '│' + C.reset + '  ' + C.dim + 'thinking...' + C.reset + '\n' +
-    '    ' + C.brown + '╲_______╱' + C.reset + '\n' +
-    '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
-}
 
-function working(task) {
-  return '\n' +
-    '      ' + C.steam + ') ( ) (' + C.reset + '\n' +
-    '     ' + C.steam + '(  ‿‿‿  )' + C.reset + '\n' +
-    '    ' + C.orange + '╱' + C.lightorange + '▔▔▔▔▔▔▔' + C.orange + '╲' + C.reset + '\n' +
-    '   ' + C.orange + '│' + C.lightorange + ' ●     ● ' + C.orange + '│' + C.reset + '  ' + C.bold + C.cyan + 'STEW' + C.reset + '\n' +
-    '   ' + C.orange + '│' + C.lightorange + '   ▽    ' + C.orange + '│' + C.reset + '  ' + C.dim + (task || 'working...') + C.reset + '\n' +
-    '    ' + C.brown + '╲▓▓▓▓▓▓▓╱' + C.reset + '\n' +
-    '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
-}
 
-function success() {
-  return '\n' +
-    '       ' + C.yellow + '✦ ✧ ✦' + C.reset + '\n' +
-    '      ' + C.steam + '(  ✓  )' + C.reset + '\n' +
-    '    ' + C.orange + '╱' + C.lightorange + '▔▔▔▔▔▔▔' + C.orange + '╲' + C.reset + '\n' +
-    '   ' + C.orange + '│' + C.lightorange + ' ★     ★ ' + C.orange + '│' + C.reset + '  ' + C.bold + C.green + 'STEW' + C.reset + '\n' +
-    '   ' + C.orange + '│' + C.lightorange + '   ◠    ' + C.orange + '│' + C.reset + '  ' + C.green + 'done!' + C.reset + '\n' +
-    '    ' + C.brown + '╲_______╱' + C.reset + '\n' +
-    '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
-}
 
 function error() {
   return '\n' +
@@ -73,25 +43,11 @@ function marathon(hours) {
     '     ' + C.brown + '▔▔▔▔▔▔▔' + C.reset + '\n';
 }
 
-function mini(state) {
-  var faces = {
-    idle: C.orange + '(◕‿◕)' + C.reset,
-    thinking: C.orange + '(◔‿◔)' + C.reset,
-    working: C.orange + '(●▽●)' + C.reset,
-    success: C.green + '(★◠★)' + C.reset,
-    error: C.red + '(×︵×)' + C.reset,
-  };
-  return faces[state] || faces.idle;
-}
 
 function bootBanner() {
   var art = idle();
-  var wordmark =
-    C.cyan + C.bold + '  ___  ___ ___ ___ ___      ' + C.reset + '\n' +
-    C.cyan + C.bold + ' / __|/ __| __/ __| _ \\     ' + C.reset + C.dim + 'Code' + C.reset + '\n' +
-    C.cyan + C.bold + ' \\__ \\ (__| _| (__|   /     ' + C.reset + C.dim + 'The Ultimate Terminal Agent' + C.reset + '\n' +
-    C.cyan + C.bold + ' |___/\\___|___\\___|_|_\\     ' + C.reset + C.dim + 'v2.1 · Zero Deps · Free' + C.reset + '\n';
+  var wordmark = C.bold + C.cyan + ' STEW Code' + C.reset + C.dim + ' — The Ultimate Terminal Agent · v2.5 · Zero Deps · Free\n\n';
   return wordmark + art;
 }
 
-module.exports = { idle, thinking, working, success, error, marathon, mini, bootBanner };
+module.exports = { idle, error, marathon, bootBanner };

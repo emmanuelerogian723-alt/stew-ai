@@ -1,234 +1,86 @@
-# 🍲 Stew Code
+# 🍲 Stew AI
 
-Terminal coding agent. Zero dependencies.
+The zero-dependency AI agent SDK + CLI for the S.T.E.W Agent API. Built in Nigeria 🇳🇬
 
-## What's New in v2.4 — Web Scraper + API Caller + Marathon Mode + Skill Forge
+`npm i stew-ai` · 50KB · 0 dependencies · Node 18+
 
-*Marathon Mode* — run autonomously for hours, checkpoints to disk, fully resumable.
-
-*Skill Forge* — writes new skills for itself, no plugins needed.
-
-*Web Scraper* — `stew scrape <url>` and `stew crawl <url> --depth N`.
-
-*API Caller* — `stew api GET/POST <url>` with headers, body, auth.
-
-*Mascot* — ANSI art that reacts to state.
-
-## Also included
-
-**Interactive Code Agent** — a full-featured AI coding agent in your terminal:
-
-- 🧠 Interactive REPL with streaming responses
-- 📁 Project context awareness (auto-detects project type, structure, config files)
-- 📝 File operations — read, write, edit with undo
-- 🖥️ Shell command execution
-- 🔀 Git integration (status, diff, log, commit)
-- 💾 Session persistence (save/load conversations)
-- 🌐 Web search toggle (search the web mid-conversation)
-- 📋 Plan mode (review changes before applying)
-- 🎨 Syntax highlighting for code blocks
-- ⚡ Real-time SSE streaming from the Stew API
-- 🔗 `@file` references to include files in your prompt
-- 🎭 12 AI personas (developer, doctor, lawyer, etc.)
-- 🤖 9 AI models (Groq, Mistral, NVIDIA, OpenRouter, HuggingFace, OpenAI)
-- 📦 Zero dependencies — pure Node.js 18+ native fetch
-
-## Install
+## Quick start
 
 ```bash
-npm install -g stew-ai
+npm i -g stew-ai
+stew login <api-key>     # free key: https://stew-agent.onrender.com
+stew code                # AI coding REPL
 ```
 
+## Commands
 
-## v2.4 — Security Scanner + Self-Verify + Endurance + Dev Environment
+| Command | What it does |
+|---|---|
+| `stew code` | AI coding REPL (chat, read/write files, run commands) |
+| `stew chat` | Plain AI chat |
+| `stew search <q>` | Web search |
+| `stew scrape <url>` | Scrape a page |
+| `stew crawl <url> [depth]` | Crawl a site |
+| `stew api <METHOD> <url>` | Call REST/GraphQL APIs |
+| `stew marathon <goal>` | Autonomous hours-long runs |
+| `stew skills` | List all skills |
+| `stew status` | API status + usage |
 
-*Security Scanner* — `/scan` scans your code for hardcoded secrets, injection risks, phishing patterns, and malware indicators. 20+ patterns, threat scoring.
+## REPL slash commands
 
-*Self-Verification* — `/verify` checks all files changed in the session: syntax, logic, and security. Auto-retries 3x.
+`/help` all commands · `/build <prompt>` build a complete app from a prompt · `/fix` auto-fix project errors · `/test` run tests + auto-fix failures · `/swarm <task>` multi-agent team build · `/explain <q>` ask how the codebase works · `/review [file]` AI code review · `/changelog` generate CHANGELOG.md · `/doc` generate README.md · `/scan` security scan · `/verify` verify session files · `/sh <cmd>` guarded shell · `/setup vscode` dev environment setup · `/skill <name>` run a skill · `/forge <name> <desc>` create new skills · `/agent <task>` autonomous mode · `/marathon <goal>` long-run mode · `/model` switch model · `/persona` switch persona · `/git <sub>` git ops · `/save` `/load` sessions · `/status` · `/exit`
 
-*Endurance Mode* — `/endurance <hours> [task]` runs for hours with checkpoints + self-heal.
+## Build an app from a prompt
 
-*Dev Environment Setup* — `/setup vscode` creates settings, launch, tasks, extensions. `/setup opencode` creates opencode.json config. `/setup all` does both + .editorconfig.
-
-*New slash commands* — `/install <pkg>`, `/clone <url>`, `/serve [port]`, `/deploy [target]`, `/create <type> <prompt>`.
-
-## Quick Start
-
-### Interactive Code Agent
-
-```bash
-# Navigate to your project
-cd /path/to/your/project
-
-# Launch the code agent
-stew
-# or explicitly
+```
 stew code
+> /build a todo app with express and sqlite
 ```
 
-Then start chatting with full project context:
+Stew plans the app, generates every file, verifies each one, auto-fixes errors, installs deps, and commits to git. Then tells you how to run it.
 
-```
-stew> Read @package.json and suggest improvements
-stew> Create a new Express API route for user authentication
-stew> Explain how the authentication works in this project
-stew> /files **/*.ts
-stew> /model stew-fast
-stew> /web on
-stew> What are the latest best practices for JWT auth?
-stew> /exit
-```
+## Why Stew?
 
-### One-Shot Commands
+1. Free — no subscription
+2. 49KB, zero dependencies
+3. Security scanner — 20+ threat patterns
+4. Self-verification — checks its own code
+5. Marathon + Endurance modes — runs for hours
+6. Skill Forge — writes new skills for itself
+7. 6 AI providers with auto-failover
+8. 12 personas, 16+ built-in skills
 
-```bash
-# Chat
-stew chat "What is the capital of Nigeria?"
+## SDK
 
-# Chat with web search
-stew chat "latest news in Lagos" --web
-
-# Web search with sources
-stew search "top Nigerian fintechs 2026" --json
-
-# List skills
-stew skills --category finance
-
-# Generate documents
-stew doc pdf '{"title":"Report","content":"Hello world"}' --output report.pdf
-
-# Check API status
-stew status
-
-# Autonomous agent — plans and executes a multi-step task, then stops
-stew agent "fix all TypeScript errors in the project"
-stew agent "add tests to all API routes" --dry-run
-
-# Marathon mode — runs for hours, checkpointed, resumable
-stew marathon "build a full REST API with auth, tests, and docs" --hours 6
-stew marathon --list
-stew marathon --resume <session-id>
-stew marathon --stop <session-id>
+```js
+import Stew from 'stew-ai';
+const stew = new Stew('your-api-key');
+const res = await stew.chat('Hello!');
 ```
 
-## Code Agent Commands
+## Links
 
-Inside `stew code` (or just `stew`), use these slash commands:
+npm: https://www.npmjs.com/package/stew-ai
+GitHub: https://github.com/emmanuelerogian723-alt/stew-ai
+API: https://stew-agent.onrender.com
+Telegram: https://t.me/stew_agent_bot
 
-| Command | Description |
-|---------|-------------|
-| `/help` | Show all available commands |
-| `/files [pattern]` | List project files (e.g. `/files **/*.ts`) |
-| `/read <file>` | Read a file into conversation context |
-| `/clear` | Clear conversation history |
-| `/model [name]` | Show or set AI model |
-| `/persona [name]` | Show or set AI persona |
-| `/web [on\|off]` | Toggle web search |
-| `/plan [on\|off]` | Toggle plan mode (read-only, no file changes) |
-| `/save <name>` | Save current session |
-| `/load <name>` | Load a saved session |
-| `/sessions` | List saved sessions |
-| `/git status` | Git status |
-| `/git diff` | Git diff |
-| `/git log` | Git commit log |
-| `/git commit <msg>` | Stage all + commit |
-| `/run <cmd>` | Execute a shell command |
-| `/undo` | Undo last file change |
-| `/diff <file>` | Show diff of a file |
-| `/status` | Show current Stew Code state |
-| `/exit` | Exit |
+MIT License. Built by Emmanuel Erog (EROGIAN) in Enugu, Nigeria.
 
-### Multi-line Input
-
-Type ```` ``` ```` or `---` to enter multi-line mode. Type it again to finish:
+## Multi-agent swarm
 
 ```
-stew> ```
-... function processPayment(amount) {
-...   // complex logic here
-...   return result;
-... }
-... ```
+stew code
+> /swarm build a REST API with auth
 ```
 
-### `@file` References
+A planner agent splits the task into subtasks, specialized agents (backend, frontend, QA, docs) work in parallel, every file is syntax-verified and auto-fixed, and Stew commits the result. Plus: it remembers fixes that worked and applies them next time (memory lives in `~/.stew/learned.md`).
 
-Include files in your prompt with `@filepath`:
-
-```
-stew> Read @src/index.js and @src/utils.js — explain the architecture
-stew> Compare @lib/old.js with @lib/new.js
-stew> Fix the bug in @src/handler.ts
-```
-
-### Plan Mode
-
-When plan mode is on, Stew analyzes your project and suggests changes but doesn't apply them. Perfect for reviewing before committing:
+## Understand your codebase
 
 ```
-stew> /plan on
-✅ Plan mode ON
-stew> Refactor the authentication to use JWT
-(stew explains what it would change, no files modified)
-stew> /plan off
-✅ Plan mode OFF — changes will auto-apply
-stew> Go ahead and make those changes
-(changes applied automatically)
+> /explain where is the payment logic?
+> /explain how does authentication work?
 ```
 
-## SDK Usage
-
-```javascript
-const Stew = require('stew-ai');
-
-const stew = new Stew({ apiKey: 'your_api_key' });
-
-// Chat
-const response = await stew.chat.send('Hello!');
-console.log(response.response);
-
-// Streaming chat
-await stew.chat.stream('Write a poem about Lagos', {
-  onToken: (delta) => process.stdout.write(delta),
-});
-
-// OpenAI-compatible completion
-const result = await stew.chat.completion([
-  { role: 'system', content: 'You are a helpful assistant.' },
-  { role: 'user', content: 'What is 2+2?' }
-]);
-
-// Web search
-const search = await stew.search.query('Nigerian tech startups 2026');
-
-// Generate documents
-const pdf = await stew.documents.pdf('# Report\n\nHello world', 'My Report');
-
-// List skills
-const skills = await stew.skills.list();
-
-// Run a skill
-const cv = await stew.skills.run('generate_cv', {
-  name: 'Emmanuel',
-  role: 'Developer'
-});
-
-// Generate images
-const img = await stew.generateImage('A lion walking through Lagos');
-
-// Execute code
-const result = await stew.executeCode('print("Hello from Stew!")');
-
-// Run agent swarm
-const agents = await stew.runAgents('Research top 10 African startups', { numAgents: 5 });
-```
-
-## Authentication
-
-Get a free API key at [https://stew-agent.onrender.com](https://stew-agent.onrender.com):
-
-```bash
-stew login your_api_key_here
-```
-
-Free tier: 1,500 API calls/month. No credit card required.
+Stew maps the project, reads key files, and answers with file citations. Drop a `STEW.md` in your repo with project rules — Stew reads it every session.
