@@ -37,10 +37,9 @@ function marathon(hours) {
 }
 
 
+var V = require('../../package.json').version;
 function bootBanner() {
-  var art = idle();
-  var wordmark = C.bold + C.cyan + ' STEW Code' + C.reset + C.dim + ' — v2.6 · Zero Deps · Free\n\n';
-  return wordmark + art;
+  return C.bold + C.cyan + ' STEW Code' + C.reset + C.dim + ' — v' + V + ' · Zero Deps · Free\n\n' + idle();
 }
 
 module.exports = { idle, error, marathon, bootBanner };
