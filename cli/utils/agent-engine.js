@@ -6,12 +6,7 @@ const { streamChatCompletion } = require('../../lib/stream');
 const { listFiles, readFileSync, projectContext } = require('./files');
 const { runSkill } = require('./skill-forge');
 const { scrape } = require('./scraper');
-const { smartCall } = require('./apicaller');
-var C = {
-  reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m',
-  red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
-  blue: '\x1b[34m', magenta: '\x1b[35m', cyan: '\x1b[36m', gray: '\x1b[90m',
-};
+var C = require('./output').C;
 async function planSteps(client, goal, cwd) {
   var ctx = projectContext(cwd);
   var files = listFiles(cwd, '**/*', { maxDepth: 4 }).slice(0, 50);
@@ -20,11 +15,11 @@ async function planSteps(client, goal, cwd) {
   planPrompt += 'PROJECT: ' + ctx.type + ' (' + files.length + ' files)\n';
   planPrompt += 'FILES:\n' + files.join('\n') + '\n\n';
   planPrompt += 'Return a JSON array of steps. Each step has:\n';
-  planPrompt += '- action: "read" | "write" | "shell" | "search" | "scrape" | "api" | "skill" | "analyze"\n';
+  planPrompt += '- action: read|write|shell|search|scrape|api|skill|analyze\n';
   planPrompt += '- description: what this step does\n';
-  planPrompt += '- target: file path (for read/write), command (for shell), query (for search), skill name (for skill)\n';
+  planPrompt += '- target: file path | command | query | skill name\n';
   planPrompt += '- code: file content (for write only)\n\n';
-  planPrompt += 'Keep it to 3-8 steps. Be specific. Return ONLY the JSON array, no explanation.';
+  planPrompt += '3-8 steps. Return ONLY the JSON array.';
   var result = await streamChatCompletion(client, [
     { role: 'system', content: 'You are a task planning AI. Return only valid JSON arrays.' },
     { role: 'user', content: planPrompt },

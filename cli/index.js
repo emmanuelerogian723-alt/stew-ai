@@ -1,19 +1,67 @@
 #!/usr/bin/env node
 
-const { parseArgs } = require('./utils/args');
+function parseArgs(argv) {
+  const args = { _: [], flags: {}, options: {} };
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+
+    if (arg === '--') {
+      args._.push(...argv.slice(i + 1));
+      break;
+    }
+
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2);
+      const next = argv[i + 1];
+
+      if (next && !next.startsWith('--') && !next.startsWith('-')) {
+        args.options[key] = next;
+        i++;
+      } else {
+        args.flags[key] = true;
+      }
+    } else if (arg.startsWith('-') && arg.length > 1) {
+      const key = arg.slice(1);
+      args.flags[key] = true;
+    } else {
+      args._.push(arg);
+    }
+  }
+
+  return args;
+}
+
 const { printBanner, printError, red, dim, bold, cyan } = require('./utils/output');
 const { getApiKey } = require('./utils/config');
 
 const { chatCommand } = require('./commands/chat');
 const { codeCommand } = require('./commands/code');
-const { marathonCommand } = require('./commands/marathon');
+const { runMarathon, listCheckpoints, requestStop } = require('./utils/marathon');
+
+async function marathonCommand(args) {
+  var apiKey = getApiKey();
+  if (!apiKey && !process.env.STEW_API_KEY) { console.log(red('No API key found.') + ' Run: stew login <your_api_key>'); process.exit(1); }
+  var flags = (args && args.flags) || {};
+  var options = (args && args.options) || {};
+  if (flags.list) {
+    var sessions = listCheckpoints();
+    if (sessions.length === 0) { console.log(dim('No marathon sessions.')); return; }
+    console.log('\n' + bold('Marathon Sessions:'));
+    sessions.forEach(function (s) { console.log('  ' + cyan(s.id) + dim('  ' + s.goal + '  ·  ' + s.status + '  ·  iter ' + s.iteration)); });
+    console.log('');
+    return;
+  }
+  if (options.stop) { requestStop(options.stop); console.log('Stopping ' + options.stop + '...'); return; }
+  var goal = '';
+  var resumeId = options.resume;
+  if (!resumeId && args && args._ && args._.length > 0) goal = args._.join(' ');
+  if (!goal && !resumeId) { console.log(cyan('Usage: stew marathon "your big goal"') + dim('  --hours N · --resume <id> · --list · --stop <id>')); process.exit(1); }
+  var client = new (require('../lib/client').StewClient)({ apiKey });
+  await runMarathon(client, goal, process.cwd(), { maxHours: options.hours ? parseFloat(options.hours) : 4, resumeId: resumeId });
+}
 const { scrapeCommand, crawlCommand } = require('./commands/scrape');
-const { apiCommand } = require('./commands/api');
-const { searchCommand } = require('./commands/search');
-const { skillsCommand } = require('./commands/skills');
-const { docCommand } = require('./commands/doc');
-const { finetuneCommand } = require('./commands/finetune');
-const { statusCommand } = require('./commands/status');
+const { apiCommand, searchCommand, skillsCommand, docCommand, finetuneCommand, statusCommand } = require('./commands/misc');
 const { authCommand } = require('./commands/auth');
 
 const COMMANDS = {
@@ -59,7 +107,7 @@ async function main() {
   }
 
   if (command === 'version' || command === '--version' || command === '-v') {
-    console.log('stew-code v2.0.0');
+    console.log('stew-code v' + require('../package.json').version);
     process.exit(0);
   }
 
@@ -94,66 +142,13 @@ function showHelp() {
   printBanner();
   console.log(bold('Stew Code') + ' — The Ultimate Terminal Coding Agent\n');
   console.log(bold('Usage') + ': stew <command> [args] [options]\n');
-  console.log(bold('Coding Agent') + ':');
-  console.log('  code                 ' + cyan('Interactive AI coding agent (REPL)'));
-  console.log('  build <prompt>       ' + cyan('Build a complete app from a prompt'));
-  console.log('  agent <task>         ' + cyan('Autonomous multi-step execution'));
-  console.log('  marathon <goal>      ' + cyan('Run for HOURS — checkpointed'));
-  console.log('  scrape <url>         ' + cyan('Scrape text/links/metadata'));
-  console.log('  crawl <url> -d N     ' + cyan('Crawl N levels deep'));
-  console.log('  api <METHOD> <url>   ' + cyan('Call REST/GraphQL APIs'));
-  console.log('');
-  console.log(bold('Commands') + ':');
-  console.log('  chat <msg>           Chat with S.T.E.W AI');
-  console.log('  search <query>       Web search with sources');
-  console.log('  skills               List all 59+ API skills');
-  console.log('  doc <type> <json>    Generate PDF/DOCX/XLSX/PPTX');
-  console.log('  finetune             View/set persona');
-  console.log('  status               Check API health');
-  console.log('  login|logout|whoami  API key management\n');
-  console.log(bold('Code Agent Commands') + ' ' + dim('(inside stew code)') + ':');
-  console.log('  ' + '/help'.padEnd(35) + 'Show all commands');
-  console.log('  ' + '/skill <name> [args]'.padEnd(35) + 'Run a skill (16+ built-in)');
-  console.log('  ' + '/skills'.padEnd(35) + 'List all available skills');
-  console.log('  ' + '/forge <name> <desc>'.padEnd(35) + 'Create a new skill (Skill Forge)');
-  console.log('  ' + '/agent <task>'.padEnd(35) + 'Autonomous task execution');
-  console.log('  ' + '/files [pattern]'.padEnd(35) + 'List project files');
-  console.log('  ' + '/read <file>'.padEnd(35) + 'Read file into context');
-  console.log('  ' + '/model [name]'.padEnd(35) + 'Show/set AI model (9 models)');
-  console.log('  ' + '/persona [name]'.padEnd(35) + 'Show/set AI persona (12 personas)');
-  console.log('  ' + '/web [on|off]'.padEnd(35) + 'Toggle web search');
-  console.log('  ' + '/plan [on|off]'.padEnd(35) + 'Plan mode (read-only)');
-  console.log('  ' + '/run <cmd>'.padEnd(35) + 'Execute shell command');
-  console.log('  ' + '/git status|diff|log|commit'.padEnd(35) + 'Git operations');
-  console.log('  ' + '/save <name> / /load <name>'.padEnd(35) + 'Save/load sessions');
-  console.log('  ' + '/undo'.padEnd(35) + 'Undo last file change');
-  console.log('  ' + '/exit'.padEnd(35) + 'Exit\n');
-  console.log(bold('Built-in Skills') + ':');
-  console.log('  scaffold, test, docker, ci, env, gitignore, deps,');
-  console.log('  explain, security, size, translate, refactor, document,');
-  console.log('  clean, loc, format, checklist\n');
-  console.log(bold('Options') + ':');
-  console.log('  ' + '--json'.padEnd(20) + 'Output as JSON');
-  console.log('  ' + '--raw'.padEnd(20) + 'Raw text output (for scripts)');
-  console.log('  ' + '--web'.padEnd(20) + 'Enable web search (chat)');
-  console.log('  ' + '--persona <name>'.padEnd(20) + 'Set persona (chat)');
-  console.log('  ' + '--output <file>'.padEnd(20) + 'Save output to file');
-  console.log('  ' + '--dry-run'.padEnd(20) + 'Agent mode: plan without applying');
-  console.log('  ' + '--maxSteps <n>'.padEnd(20) + 'Agent mode: max steps (default 10)\n');
-  console.log(bold('Examples') + ':');
-  console.log('  ' + dim('stew  (launches interactive coding agent)'));
-  console.log('  ' + dim('stew agent "fix all TypeScript errors"'));
-  console.log('  ' + dim('stew agent "add tests to all API routes"'));
-  console.log('  ' + dim('stew code  (explicit launch)'));
-  console.log('  ' + dim('stew chat "What is the capital of Nigeria?"'));
-  console.log('  ' + dim('stew search "top Nigerian fintechs 2026" --json'));
-  console.log('  ' + dim('stew skills --category finance'));
-  console.log('  ' + dim('stew doc pdf \'{"title":"Report","content":"Hello"}\' --output report.pdf'));
-  console.log('  ' + dim('cat error.log | stew chat "What is causing this error?"'));
-  console.log('  ' + dim('stew login stew_your_api_key_here') + '\n');
-  console.log(dim('Docs: https://stew-agent.onrender.com/docs'));
-  console.log(dim('Get a free key: https://stew-agent.onrender.com'));
-  console.log(dim('GitHub: https://github.com/emmanuelerogian723-alt/stew-ai') + '\n');
+  console.log(bold('Coding Agent') + ':\n  ' + cyan('code') + ' interactive REPL · ' + cyan('build <p>') + ' app from prompt · ' + cyan('agent <task>') + ' autonomous · ' + cyan('marathon <goal>') + ' hours-long · ' + cyan('swarm <task>') + ' multi-agent team\n');
+  console.log(bold('Web & API') + ':\n  ' + cyan('chat <msg>') + ' · ' + cyan('search <q>') + ' web search · ' + cyan('scrape <url>') + ' · ' + cyan('crawl <url> -d N') + ' · ' + cyan('api <METHOD> <url>') + ' REST/GraphQL\n');
+  console.log(bold('More') + ':\n  ' + cyan('skills') + ' list skills · ' + cyan('doc <type> <json>') + ' PDF/DOCX/XLSX/PPTX · ' + cyan('finetune') + ' personas · ' + cyan('status') + ' API health · ' + cyan('login|logout|whoami') + ' keys\n');
+  console.log(bold('Inside stew code') + ' ' + dim('(REPL)') + ':\n  ' + '/build /swarm /explain /review /image /voice /mcp /changelog /fix /test /doc /scan /sh /undo /agent /marathon /skill /forge /model /persona /plan /web /git /run /save /load\n');
+  console.log(bold('Options') + ':\n  ' + '--json --raw --web --persona <n> --output <f> --dry-run --maxSteps <n>\n');
+  console.log(bold('Examples') + ':\n  ' + dim('stew · stew agent "fix all TypeScript errors" · stew chat "hi" · cat err.log | stew chat "what broke?"') + '\n');
+  console.log(dim('Docs: https://stew-agent.onrender.com/docs · GitHub: github.com/emmanuelerogian723-alt/stew-ai') + '\n');
 }
 
 main().catch(function(err) {

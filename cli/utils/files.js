@@ -1,5 +1,8 @@
 const fs = require('fs');
+const { execSync } = require('child_process');
 const path = require('path');
+const os = require('os');
+
 const MAX_FILE_SIZE = 512 * 1024;
 const MAX_FILES_LIST = 500;
 const BINARY_EXTS = new Set([
@@ -201,7 +204,130 @@ class UndoStack {
     this.stack = [];
   }
 }
-module.exports = {
-  readFileSync, isBinary, listFiles, globMatch, projectContext,
-  buildTree, diff, UndoStack, MAX_FILE_SIZE,
-};
+
+/**
+ * Session persistence for Stew Code — saves/loads conversations locally.
+ * Zero dependency — uses fs only.
+ */
+
+const sessionDir = path.join(os.homedir(), '.stew', 'sessions');
+
+function ensureSessionDir() {
+  if (!fs.existsSync(sessionDir)) {
+    fs.mkdirSync(sessionDir, { recursive: true });
+  }
+}
+
+function saveSession(name, messages, meta = {}) {
+  ensureSessionDir();
+  const filename = name.replace(/[^a-zA-Z0-9-_]/g, '_') + '.json';
+  const filepath = path.join(sessionDir, filename);
+  const data = {
+    name,
+    messages,
+    meta: { ...meta, savedAt: new Date().toISOString() },
+  };
+  fs.writeFileSync(filepath, JSON.stringify(data, null, 2));
+  return filepath;
+}
+
+function loadSession(name) {
+  const filename = name.replace(/[^a-zA-Z0-9-_]/g, '_') + '.json';
+  const filepath = path.join(sessionDir, filename);
+  if (!fs.existsSync(filepath)) return null;
+  const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+  return data;
+}
+
+function listSessions() {
+  ensureSessionDir();
+  const files = fs.readdirSync(sessionDir).filter(f => f.endsWith('.json'));
+  return files.map(f => {
+    try {
+      const data = JSON.parse(fs.readFileSync(path.join(sessionDir, f), 'utf8'));
+      return {
+        name: data.name || f.replace('.json', ''),
+        messages: data.messages?.length || 0,
+        savedAt: data.meta?.savedAt || '',
+      };
+    } catch {
+      return { name: f.replace('.json', ''), messages: 0, savedAt: '' };
+    }
+  });
+}
+
+function deleteSession(name) {
+  const filename = name.replace(/[^a-zA-Z0-9-_]/g, '_') + '.json';
+  const filepath = path.join(sessionDir, filename);
+  if (fs.existsSync(filepath)) {
+    fs.unlinkSync(filepath);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Git operations for Stew Code — zero dependency, uses child_process.execSync.
+ */
+
+function gitExec(args, dir = '.', options = {}) {
+  try {
+    const result = execSync(`git ${args}`, {
+      cwd: dir,
+      encoding: 'utf8',
+      timeout: options.timeout || 10000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    return { ok: true, output: result.trim() };
+  } catch (err) {
+    return { ok: false, output: err.stderr?.trim() || err.message };
+  }
+}
+
+function isGitRepo(dir = '.') {
+  const result = gitExec('rev-parse --is-inside-work-tree', dir);
+  return result.ok;
+}
+
+function status(dir = '.') {
+  const branch = gitExec('branch --show-current', dir);
+  const st = gitExec('status --short', dir);
+  const staged = gitExec('diff --cached --stat', dir);
+
+  return {
+    isRepo: true,
+    branch: branch.ok ? branch.output : 'unknown',
+    changes: st.ok ? st.output.split('\n').filter(l => l.trim()) : [],
+    staged: staged.ok ? staged.output : '',
+  };
+}
+
+function diff(dir = '.', staged = false) {
+  const flag = staged ? '--cached' : '';
+  const result = gitExec(`diff ${flag}`, dir);
+  return result.ok ? result.output : '';
+}
+
+function log(dir = '.', count = 10) {
+  const result = gitExec(
+    `log --oneline -${count} --format="%h %s (%cr)"`,
+    dir
+  );
+  return result.ok ? result.output : '';
+}
+
+function commit(message, dir = '.') {
+  const result = gitExec(`commit -m "${message.replace(/"/g, '\\"')}"`, dir);
+  return result;
+}
+
+function addAll(dir = '.') {
+  return gitExec('add -A', dir);
+}
+
+function currentBranch(dir = '.') {
+  const result = gitExec('branch --show-current', dir);
+  return result.ok ? result.output : 'unknown';
+}
+
+module.exports = { readFileSync, isBinary, listFiles, globMatch, projectContext, buildTree, diff, UndoStack, MAX_FILE_SIZE, saveSession, loadSession, listSessions, deleteSession, sessionDir, gitExec, isGitRepo, status, log, commit, addAll, currentBranch };

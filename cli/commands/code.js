@@ -1,34 +1,24 @@
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { execSync, exec } = require('child_process');
 const path = require('path');
 const readline = require('readline');
 const { getApiKey } = require('../utils/config');
 const { StewClient } = require('../../lib/client');
 const { streamChatCompletion } = require('../../lib/stream');
-const { readFileSync, listFiles, projectContext, diff, UndoStack } = require('../utils/files');
-const git = require('../utils/git');
-const { saveSession, loadSession, listSessions, deleteSession } = require('../utils/session');
+const git = require('../utils/files');
+const { readFileSync, listFiles, projectContext, diff, UndoStack, saveSession, loadSession, listSessions, deleteSession } = git;
 const { BUILTIN_SKILLS, listSkills, runSkill, forgeSkill, deleteSkill } = require('../utils/skill-forge');
 const mascot = require('../utils/mascot');
 const adv = require('../utils/advanced');
+const mcp = require('../utils/mcp');
+const PKG = require('../../package.json');
 
-var C = {
-  reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', italic: '\x1b[3m',
-  red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
-  blue: '\x1b[34m', magenta: '\x1b[35m', cyan: '\x1b[36m',
-  gray: '\x1b[90m', white: '\x1b[37m',
-};
+var C = require('../utils/output').C;
 
 var MODELS = [
-  ['stew-default', 'Auto-select best model'],
-  ['stew-fast', 'Groq (fastest)'],
-  ['stew-mistral', 'Mistral Large'],
-  ['stew-nvidia', 'NVIDIA NIM'],
-  ['stew-openrouter', 'OpenRouter (multi-model)'],
-  ['stew-hf', 'HuggingFace'],
-  ['stew-openai', 'OpenAI GPT-4o'],
-  ['gpt-4o', 'GPT-4o'],
-  ['gpt-4o-mini', 'GPT-4o mini (cheap)'],
+  ['stew-default', 'Auto'], ['stew-fast', 'Fast'], ['stew-mistral', 'Mistral'],
+  ['stew-nvidia', 'NVIDIA'], ['stew-openrouter', 'OpenRouter'], ['stew-hf', 'HF'],
+  ['stew-openai', 'OpenAI'], ['gpt-4o', 'GPT-4o'], ['gpt-4o-mini', 'GPT-4o mini'],
 ];
 
 var PERSONAS = [
@@ -38,37 +28,40 @@ var PERSONAS = [
 ];
 
 var SLASH_COMMANDS = [
-  ['/help', 'Show all commands'],
-  ['/files [pattern]', 'List project files'],
+  ['/help', 'All commands'],
+  ['/files [pattern]', 'Files'],
   ['/read <file>', 'Read a file'],
   ['/clear', 'Clear conversation'],
-  ['/model [name]', 'Show/set model'],
-  ['/persona [name]', 'Show/set persona'],
+  ['/model [name]', 'Model'],
+  ['/persona [name]', 'Persona'],
   ['/web [on|off]', 'Toggle web search'],
   ['/plan [on|off]', 'Plan mode'],
   ['/skill <name> [args]', 'Run a skill'],
-  ['/skills', 'List all skills'],
-  ['/forge <name> <desc>', 'Create a new skill'],
-  ['/unforge <name>', 'Delete a custom skill'],
-  ['/agent <task>', 'Autonomous mode'],
-  ['/marathon <goal> [-h N]', 'Run for hours — checkpointed'],
+  ['/skills', 'All skills'],
+  ['/forge <name> <desc>', 'New skill'],
+  ['/unforge <name>', 'Remove skill'],
+  ['/agent <task>', 'Autonomous build'],
+  ['/marathon <goal> [-h N]', 'Long-run, checkpointed'],
   ['/save <name>', 'Save session'],
   ['/load <name>', 'Load session'],
-  ['/sessions', 'List sessions'],
-  ['/git <sub>', 'Git: status|diff|log|commit'],
-  ['/run <cmd>', 'Execute shell command'],
+  ['/sessions', 'Sessions'],
+  ['/git <sub>', 'Git subcommands'],
+  ['/run <cmd>', 'Shell command'],
   ['/undo', 'Undo last change'],
   ['/diff <file>', 'Show diff'],
-  ['/status', 'Show state'],
-  ['/build <prompt>', 'Build an app from a prompt'],
-  ['/explain <question>', 'Ask how the codebase works'],
+  ['/status', 'State'],
+  ['/build <prompt>', 'Build app from prompt'],
+  ['/explain <question>', 'Codebase Q&A'],
   ['/review [file]', 'AI code review'],
-  ['/swarm <task>', 'Multi-agent team build'],
+  ['/swarm <task>', 'Agent team build'],
   ['/changelog', 'Generate CHANGELOG.md'],
+  ['/voice [on|off]', 'Spoken responses'],
+  ['/image <path> [q]', 'Ask about an image'],
+  ['/mcp <sub>', 'MCP servers'],
   ['/sh <cmd>', 'Run a shell command'],
-  ['/fix', 'Auto-fix all errors in the project'],
-  ['/test', 'Run tests + auto-fix'],
-  ['/doc', 'Generate README.md from your code'],
+  ['/fix', 'Auto-fix errors'],
+  ['/test', 'Tests + auto-fix'],
+  ['/doc', 'Generate README.md'],
   ['/exit', 'Exit'],
 ];
 
@@ -83,7 +76,7 @@ async function codeCommand(args) {
   var client = new StewClient({ apiKey });
   var cwd = process.cwd();
 
-  var state = { sessionFiles: {},
+  var state = { sessionFiles: {}, voice: false,
     messages: [],
     model: 'stew-default',
     persona: 'developer',
@@ -101,7 +94,7 @@ async function codeCommand(args) {
 
   function buildSystemPrompt() {
     var prompt = 'You are Stew Code, the most powerful AI coding agent for the terminal. You help developers write, debug, refactor, test, deploy, and understand code.\n\n';
-    prompt += 'CAPABILITIES: read/write files, run shell commands, web search, generate code/tests/docs, debug, explain, Skill Forge, autonomous tasks, scaffolding, Dockerfile/CI, security audit.\n\n';
+    prompt += 'CAPABILITIES: read/write files, shell, web search, code/tests/docs, debug, explain, skills, autonomous tasks, Dockerfile/CI, security audit.\n\n';
     prompt += 'CURRENT PROJECT:\n';
     prompt += '- Directory: ' + projCtx.root + '\n';
     prompt += '- Type: ' + projCtx.type + '\n';
@@ -123,6 +116,8 @@ async function codeCommand(args) {
     if (fs.existsSync(stewMdPath)) {
       prompt += '\n\nPROJECT RULES (STEW.md):\n' + fs.readFileSync(stewMdPath, 'utf8').slice(0, 3000);
     }
+    var mcpServers = Object.keys(mcp.mcpConfig());
+    if (mcpServers.length) prompt += '\n\nMCP SERVERS (user can run via /mcp run <name> <tool>): ' + mcpServers.join(', ');
     var learned = adv.loadLearned();
     if (learned) prompt += '\n\nLEARNED FIXES (remember these):\n' + learned;
 
@@ -134,8 +129,7 @@ async function codeCommand(args) {
     prompt += '4. Always explain what changed and why.\n';
     prompt += '5. In plan mode, do NOT write files — only explain what you would do.\n';
     prompt += '6. Match the project\'s existing code style.\n';
-    prompt += '7. If you cannot do something, suggest using /forge to create a skill for it.\n';
-    prompt += '8. Be proactive — suggest next steps after completing tasks.';
+        prompt += '8. Proactively suggest next steps.';
 
     if (state.persona !== 'default' && state.persona !== 'developer') {
       prompt += '\n\nPERSONA: ' + state.persona;
@@ -162,8 +156,12 @@ async function codeCommand(args) {
       '  ' + C.dim + '·' + C.reset + '  ' + (gs.changes.length > 0 ? C.yellow + gs.changes.length + ' changes' : C.green + 'clean') + C.reset);
   }
 
-  console.log(C.dim + '  Type a message, /help for commands, /skills for skills, @file to include files' + C.reset);
+  console.log(C.dim + '  /help commands · /skills skills · @file include file' + C.reset);
   console.log(C.dim + '  ' + '─'.repeat(60) + C.reset + '\n');
+
+  fetch('https://registry.npmjs.org/-/package/stew-ai/dist-tags').then(function (r) { return r.json(); }).then(function (d) {
+    if (d && d.latest && d.latest !== PKG.version) console.log(C.yellow + '  Update available: stew-ai ' + d.latest + ' → npm i -g stew-ai' + C.reset + '\n');
+  }).catch(function () {});
 
   var rl = readline.createInterface({
     input: process.stdin,
@@ -271,6 +269,7 @@ async function codeCommand(args) {
       await extractAndApplyChanges(fullResponse, state);
 
       suggestShellCommands(fullResponse, state);
+      if (state.voice) speak(fullResponse);
 
     } catch (err) {
       process.stdout.write('\r' + ' '.repeat(50) + '\r');
@@ -284,11 +283,21 @@ async function codeCommand(args) {
     }
   }
 
+  function speak(text) {
+    var clean = text.replace(/```[\s\S]*?```/g, ' code block ').replace(/[*_#`>|]/g, '').replace(/\s+/g, ' ').slice(0, 400);
+    if (!clean) return;
+    var p = process.platform;
+    var cmd = p === 'darwin' ? 'say ' + JSON.stringify(clean)
+      : p === 'win32' ? 'powershell -c "(New-Object -ComObject SAPI.SpVoice).Speak(\'' + clean.replace(/'/g, '') + '\')"'
+      : 'espeak ' + JSON.stringify(clean) + ' 2>/dev/null || spd-say ' + JSON.stringify(clean) + ' 2>/dev/null';
+    exec(cmd, function () {});
+  }
+
   async function extractAndApplyChanges(response, state) {
     var codeBlocks = response.match(/```(\w+)\s*\n\/\/\s*(?:filepath:|file:)?\s*(.+?)\n([\s\S]*?)```/g);
     if (!codeBlocks || codeBlocks.length === 0) return;
     if (state.planMode) {
-      console.log(C.dim + '(Plan mode — no files changed. /plan off to apply)' + C.reset + '\n');
+      console.log(C.dim + 'Plan mode. /plan off to apply' + C.reset + '\n');
       return;
     }
 
@@ -333,8 +342,7 @@ async function codeCommand(args) {
       if (cmd.indexOf('// filepath') === 0 || cmd.indexOf('// file:') === 0) continue;
       if (cmd.length < 3 || cmd.indexOf('#!') === 0) continue;
 
-      console.log(C.dim + 'Run: ' + C.reset + C.cyan + cmd.slice(0, 80) + (cmd.length > 80 ? '...' : '') + C.reset);
-      console.log(C.dim + '  Use /run ' + cmd + C.reset + '\n');
+      console.log(C.dim + '/run ' + cmd.slice(0, 90) + C.reset + '\n');
     }
   }
 
@@ -737,6 +745,136 @@ async function codeCommand(args) {
           console.log(dres.error ? C.red + '  ' + dres.error + C.reset : C.green + '  ✓ ' + dres + C.reset + '\n');
         } catch (de) { console.log(C.red + '  Doc failed: ' + de.message + C.reset + '\n'); }
         break;
+
+      case 'create': case 'new': {
+        if (!args) { console.log(C.yellow + '  /create <template> [name]' + C.reset + '\n'); break; }
+        var r = runSkill('scaffold', [parts[2] || 'new-project', (parts[1] || 'node').toLowerCase()], cwd);
+        console.log((r.success ? C.green : C.red) + '  ' + r.output + C.reset + '\n');
+        break;
+      }
+
+      case 'explain': case 'why': case 'how': {
+        if (!args) { console.log(C.yellow + '  /explain <question>' + C.reset + '\n'); break; }
+        console.log(C.cyan + '  Mapping codebase...' + C.reset);
+        try {
+          var ans = await adv.explainCodebase(client, args, cwd);
+          console.log('\n' + ans + '\n');
+        } catch (ee) { console.log(C.red + '  ' + (ee.message || ee) + C.reset + '\n'); }
+        break;
+      }
+
+      case 'review': {
+        console.log(C.cyan + '  Reviewing code...' + C.reset);
+        try {
+          var revFiles = parts.length > 1 ? [args] : null;
+          var reviews = await adv.reviewCode(client, cwd, { files: revFiles });
+          if (!reviews.length) { console.log(C.dim + '  No files to review.' + C.reset + '\n'); break; }
+          reviews.forEach(function (rv) {
+            console.log('\n' + C.bold + '  ' + rv.file + C.reset + (rv.flagged ? C.yellow + '  (security: ' + rv.flagged + ')' + C.reset : ''));
+            console.log('  ' + C.dim + rv.review.split('\n').join('\n  ') + C.reset);
+          });
+          console.log('');
+        } catch (re) { console.log(C.red + '  ' + (re.message || re) + C.reset + '\n'); }
+        break;
+      }
+
+      case 'swarm': case 'team': {
+        if (!args) { console.log(C.yellow + '  /swarm <task>' + C.reset + '\n'); break; }
+        console.log(C.bold + '  Swarm Mode engaged.' + C.reset);
+        try {
+          var swarmRes = await adv.runSwarm(client, args, cwd, { log: function (m) { console.log(C.magenta + '  ' + m + C.reset); } });
+          console.log(C.green + '  Done. ' + swarmRes.written.length + ' files written by ' + swarmRes.roles.join(', ') + '.' + C.reset);
+          if (swarmRes.failed.length) console.log(C.yellow + '  Auto-fix attempted on: ' + swarmRes.failed.join(', ') + C.reset);
+          console.log('');
+        } catch (se) { console.log(C.red + '  Swarm failed: ' + (se.message || se) + C.reset + '\n'); }
+        break;
+      }
+
+      case 'changelog': case 'changes': {
+        console.log(C.dim + '  changelog...' + C.reset);
+        var cl = await adv.genChangelog(client, cwd);
+        if (!cl) { console.log(C.yellow + '  No git history found. Commit some code first.' + C.reset + '\n'); break; }
+        fs.writeFileSync(path.join(cwd, 'CHANGELOG.md'), cl);
+        console.log(C.green + '  CHANGELOG.md written.' + C.reset + '\n');
+        break;
+      }
+
+      case 'sh': case 'shell': {
+        if (!args) { console.log(C.yellow + '  /sh <command>' + C.reset + '\n'); break; }
+        var danger = new RegExp('rm\\s+-rf\\s+\\/|sudo|dd\\s+if=|mk' + 'fs|:\\(\\)\\s*\\{');
+        if (danger.test(args)) { console.log(C.red + '  Blocked: dangerous command rejected.' + C.reset + '\n'); break; }
+        try {
+          var so = execSync(args, { cwd: cwd, encoding: 'utf8', timeout: 30000 });
+          console.log(so || C.dim + '  (no output)' + C.reset);
+        } catch (se2) { console.log(C.red + '  ' + (se2.stdout || se2.message) + C.reset); }
+        console.log('');
+        break;
+      }
+
+      case 'voice': case 'speak': {
+        var v = (args || '').toLowerCase();
+        state.voice = v === 'on' ? true : v === 'off' ? false : !state.voice;
+        console.log(C.dim + '  Voice ' + C.reset + (state.voice ? C.green + 'on' : C.gray + 'off') + C.reset + '\n');
+        if (state.voice) speak('Voice mode on.');
+        break;
+      }
+
+      case 'image': case 'img': {
+        var imgFile = parts[1];
+        if (!imgFile) { console.log(C.yellow + '  /image <path> [question]' + C.reset + '\n'); break; }
+        var resolvedImg = path.resolve(cwd, imgFile);
+        if (!fs.existsSync(resolvedImg)) { console.log(C.red + '  not found: ' + imgFile + C.reset + '\n'); break; }
+        var imgQ = parts.slice(2).join(' ') || 'Describe this image in detail.';
+        var mime = path.extname(resolvedImg).slice(1).toLowerCase();
+        if (['gif', 'webp'].indexOf(mime) < 0) mime = 'jpeg';
+        var imgB64 = fs.readFileSync(resolvedImg).toString('base64');
+        console.log(C.dim + '  analyzing image...' + C.reset);
+        process.stdout.write(C.green + C.bold + 'stew' + C.reset + ' ' + C.dim + '>' + C.reset + ' ');
+        var imgResp = '';
+        try {
+          await streamChatCompletion(client, [{ role: 'user', content: [
+            { type: 'text', text: imgQ },
+            { type: 'image_url', image_url: { url: 'data:image/' + mime + ';base64,' + imgB64 } }
+          ]}], { model: state.model, onToken: function (t) { imgResp += t; process.stdout.write(t); } });
+          console.log('\n');
+          state.messages.push({ role: 'user', content: imgQ + ' [image: ' + imgFile + ']' });
+          state.messages.push({ role: 'assistant', content: imgResp });
+          if (state.voice) speak(imgResp);
+        } catch (imgErr) {
+          console.log('\n' + C.red + '  Vision error: ' + (imgErr.message || imgErr) + C.reset);
+          console.log(C.dim + '  API may not support images yet.' + C.reset + '\n');
+        }
+        break;
+      }
+
+      case 'mcp': {
+        var mcpSub = (parts[1] || 'list').toLowerCase();
+        if (mcpSub === 'add' && parts.length >= 4) {
+          console.log(C.green + '  ' + mcp.addServer(parts[2], parts.slice(3).join(' ')) + C.reset + '\n');
+        } else if (mcpSub === 'remove' && parts[2]) {
+          console.log(C.green + '  ' + mcp.removeServer(parts[2]) + C.reset + '\n');
+        } else if (mcpSub === 'tools' && parts[2]) {
+          mcp.listTools(parts[2]).then(function (tools) {
+            console.log('');
+            tools.forEach(function (t) { console.log('  ' + C.cyan + (t.name || '?') + C.reset + C.dim + '  ' + (t.description || '').split('\n')[0].slice(0, 90) + C.reset); });
+            console.log('');
+          }).catch(function (e) { console.log(C.red + '  ' + e.message + C.reset + '\n'); });
+        } else if ((mcpSub === 'run' || mcpSub === 'call') && parts.length >= 4) {
+          var mcpArgs = {};
+          try { mcpArgs = JSON.parse(parts.slice(4).join(' ') || '{}'); } catch (e) { console.log(C.red + '  Bad JSON args' + C.reset + '\n'); break; }
+          mcp.callTool(parts[2], parts[3], mcpArgs).then(function (r) {
+            console.log((r.ok ? C.green : C.red) + '  ' + r.output + C.reset + '\n');
+          }).catch(function (e) { console.log(C.red + '  ' + e.message + C.reset + '\n'); });
+        } else {
+          var mcpCfg = mcp.mcpConfig();
+          var mcpNames = Object.keys(mcpCfg);
+          console.log('\n' + C.bold + '  MCP Servers:' + C.reset);
+          if (!mcpNames.length) console.log(C.dim + '  none — /mcp add <name> <cmd>' + C.reset);
+          mcpNames.forEach(function (n) { console.log('  ' + C.cyan + n + C.reset + C.dim + '  ' + mcpCfg[n].command + C.reset); });
+          console.log(C.dim + '\n  /mcp add|tools|run|remove <args>' + C.reset + '\n');
+        }
+        break;
+      }
 
       default:
         var skillCheck = runSkill(cmd, parts.slice(1), cwd);

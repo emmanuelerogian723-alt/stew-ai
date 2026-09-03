@@ -1,11 +1,4 @@
-var C = {
-  reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m',
-  red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
-  blue: '\x1b[34m', magenta: '\x1b[35m', cyan: '\x1b[36m',
-  gray: '\x1b[90m', white: '\x1b[37m',
-  orange: '\x1b[38;5;208m', brown: '\x1b[38;5;94m',
-  lightorange: '\x1b[38;5;215m', steam: '\x1b[38;5;250m',
-};
+var C = require('./output').C;
 
 function idle() {
   return '\n' +
@@ -46,7 +39,7 @@ function marathon(hours) {
 
 function bootBanner() {
   var art = idle();
-  var wordmark = C.bold + C.cyan + ' STEW Code' + C.reset + C.dim + ' — The Ultimate Terminal Agent · v2.5 · Zero Deps · Free\n\n';
+  var wordmark = C.bold + C.cyan + ' STEW Code' + C.reset + C.dim + ' — v2.6 · Zero Deps · Free\n\n';
   return wordmark + art;
 }
 

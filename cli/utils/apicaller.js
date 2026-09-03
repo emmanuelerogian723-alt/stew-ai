@@ -1,4 +1,4 @@
-var C = { reset:'\x1b[0m', bold:'\x1b[1m', dim:'\x1b[2m', red:'\x1b[31m', green:'\x1b[32m', yellow:'\x1b[33m', cyan:'\x1b[36m', magenta:'\x1b[35m', gray:'\x1b[90m' };
+var C = require('./output').C;
 var DEFAULT_TIMEOUT = 30000;
 async function callApi(opts) {
   opts = opts || {};

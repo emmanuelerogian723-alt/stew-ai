@@ -1,10 +1,10 @@
 const { StewClient } = require('./lib/client');
-const { Chat } = require('./lib/chat');
-const { Search } = require('./lib/search');
-const { Skills } = require('./lib/skills');
-const { Documents } = require('./lib/documents');
-const { FineTune } = require('./lib/finetune');
-const { StewError } = require('./lib/errors');
+const { Chat } = require('./lib/api');
+const { Search } = require('./lib/api');
+const { Skills } = require('./lib/api');
+const { Documents } = require('./lib/api');
+const { FineTune } = require('./lib/api');
+const { StewError } = require('./lib/api');
 
 class Stew {
   constructor(options = {}) {

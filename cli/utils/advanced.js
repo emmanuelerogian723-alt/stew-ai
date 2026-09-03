@@ -220,7 +220,7 @@ async function buildApp(prompt, client, opts) {
   // PHASE 1: PLAN
   log('Phase 1/4: Planning...');
   var planTxt = await _bllm(client, [
-    { role: 'system', content: 'You are an expert app architect. Output ONLY JSON, no markdown: {"name":"kebab-case-name","description":"one line","files":[{"path":"relative/path","purpose":"what it does"}],"deps":["npm packages"],"run":"command to run the app"} Plan a COMPLETE runnable app (max 14 files). Always include package.json, README.md, entry point, all source files. Prefer plain Node.js/Express, static HTML+CSS+JS, or Python stdlib. Avoid heavy build tools.' },
+    { role: 'system', content: 'You are an expert app architect. Output ONLY JSON, no markdown: {"name":"kebab-case","description":"one line","files":[{"path":"rel/path","purpose":"what it does"}],"deps":[],"run":"start cmd"} Plan a COMPLETE runnable app (max 14 files, always include package.json, entry point, README.md, all sources). Prefer plain Node/Express, static HTML/CSS/JS, or Python stdlib. No build tools.' },
     { role: 'user', content: prompt }
   ], model);
   var plan = _bjson(planTxt);
