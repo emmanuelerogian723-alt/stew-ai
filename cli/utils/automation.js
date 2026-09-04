@@ -191,16 +191,77 @@ function findBrowser() {
   }
   return null;
 }
-function pageShot(url, out) {
+function hasTool(t) { try { return !!execSync('command -v ' + t + ' 2>/dev/null').toString().trim(); } catch (e) { return false; } }
+function isRoot() { try { return typeof process.getuid === 'function' && process.getuid() === 0; } catch (e) { return false; } }
+function isTermux() { return !!process.env.TERMUX_VERSION || fs.existsSync('/data/data/com.termux'); }
+// ── Self-healing dependency installer: detects the platform's package manager
+// and installs missing tools automatically instead of just telling the user to. ──
+function pkgManager() {
+  if (process.platform === 'win32') return hasTool('winget') ? 'winget' : (hasTool('choco') ? 'choco' : null);
+  if (process.platform === 'darwin') return hasTool('brew') ? 'brew' : null;
+  if (isTermux() && hasTool('pkg')) return 'pkg';
+  if (hasTool('apt-get')) return 'apt-get';
+  if (hasTool('apt')) return 'apt';
+  if (hasTool('dnf')) return 'dnf';
+  if (hasTool('yum')) return 'yum';
+  if (hasTool('apk')) return 'apk';
+  if (hasTool('pacman')) return 'pacman';
+  if (hasTool('zypper')) return 'zypper';
+  if (hasTool('brew')) return 'brew';
+  return null;
+}
+function installCmd(mgr, pkg) {
+  var sudo = (mgr === 'pkg' || mgr === 'brew' || mgr === 'winget' || mgr === 'choco' || isRoot()) ? '' : 'sudo ';
+  switch (mgr) {
+    case 'apt-get': return sudo + 'apt-get update -qq && ' + sudo + 'apt-get install -y ' + pkg;
+    case 'apt': return sudo + 'apt update -qq && ' + sudo + 'apt install -y ' + pkg;
+    case 'pkg': return 'pkg install -y ' + pkg;
+    case 'dnf': return sudo + 'dnf install -y ' + pkg;
+    case 'yum': return sudo + 'yum install -y ' + pkg;
+    case 'apk': return sudo + 'apk add ' + pkg;
+    case 'pacman': return sudo + 'pacman -Sy --noconfirm ' + pkg;
+    case 'zypper': return sudo + 'zypper install -y ' + pkg;
+    case 'brew': return 'brew install ' + pkg;
+    case 'winget': return 'winget install -e --id ' + pkg + ' --silent --accept-package-agreements --accept-source-agreements';
+    case 'choco': return 'choco install -y ' + pkg;
+    default: return null;
+  }
+}
+function manualHint(pkg) {
+  var mgr = pkgManager();
+  var cmd = mgr ? installCmd(mgr, pkg) : null;
+  return cmd || ('install "' + pkg + '" using your system package manager');
+}
+// Tries each candidate package name with the detected manager until one installs successfully.
+// Reports progress via onLog since installs can take a while — never do this silently.
+function autoInstall(candidates, onLog) {
+  var mgr = pkgManager();
+  if (!mgr) { if (onLog) onLog('No package manager detected — cannot auto-install.'); return false; }
+  for (var i = 0; i < candidates.length; i++) {
+    var cmd = installCmd(mgr, candidates[i]);
+    if (!cmd) continue;
+    try {
+      if (onLog) onLog('Installing ' + candidates[i] + ' via ' + mgr + '... (this can take a minute)');
+      execSync(cmd, { stdio: 'ignore', timeout: 240000 });
+      return true;
+    } catch (e) { if (onLog) onLog(candidates[i] + ' install failed, trying next option...'); }
+  }
+  return false;
+}
+function pageShot(url, out, onLog) {
   var bin = findBrowser();
-  if (!bin) throw new Error('No Chrome/Chromium found. Install Chrome, or screenshot your screen: /screenshot');
+  if (!bin) {
+    var candidates = isTermux() ? ['chromium'] : (process.platform === 'darwin' ? ['chromium'] : ['chromium', 'chromium-browser']);
+    if (autoInstall(candidates, onLog)) bin = findBrowser();
+  }
+  if (!bin) throw new Error('No Chrome/Chromium found and auto-install did not succeed (no network, no permissions, or no package manager). Install it yourself with: ' + manualHint('chromium'));
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-  execSync('"' + bin + '" --headless=new --disable-gpu --hide-scrollbars --window-size=1280,800 --virtual-time-budget=8000 --screenshot="' + out + '" "' + url + '"', { timeout: 60000, stdio: 'ignore' });
+  var sandboxFlag = isRoot() ? ' --no-sandbox' : '';
+  execSync('"' + bin + '" --headless=new --disable-gpu' + sandboxFlag + ' --hide-scrollbars --window-size=1280,800 --virtual-time-budget=8000 --screenshot="' + out + '" "' + url + '"', { timeout: 60000, stdio: 'ignore' });
   return out;
 }
-function hasTool(t) { try { return !!execSync('command -v ' + t + ' 2>/dev/null').toString().trim(); } catch (e) { return false; } }
 function noDisplay() { return process.platform !== 'win32' && process.platform !== 'darwin' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY; }
-function screenShot(out) {
+function screenShot(out, onLog) {
   if (noDisplay()) throw new Error('No display detected. Screen capture needs a desktop session — over SSH, run it on the machine directly.');
   if (process.platform === 'darwin') { execSync('screencapture -x "' + out + '"'); return out; }
   if (process.platform === 'win32') {
@@ -208,35 +269,36 @@ function screenShot(out) {
     execSync('powershell -NoProfile -Command "' + ps.replace(/"/g, '\\"') + '"', { timeout: 30000 });
     return out;
   }
+  if (!hasTool('scrot') && !hasTool('gnome-screenshot') && !hasTool('grim') && !hasTool('import')) {
+    autoInstall(['scrot'], onLog);
+  }
   if (hasTool('scrot')) execSync('scrot "' + out + '"');
   else if (hasTool('gnome-screenshot')) execSync('gnome-screenshot -f "' + out + '"');
   else if (hasTool('grim')) execSync('grim "' + out + '"');
   else if (hasTool('import')) execSync('import -window root "' + out + '"');
   else if (hasTool('ffmpeg')) execSync('ffmpeg -y -f x11grab -video_size 1366x768 -i :0.0 -frames:v 1 "' + out + '"', { stdio: 'ignore' });
-  else throw new Error('No screen capture tool. Install one:\n  sudo apt install scrot\nOr let Stew do it: /run sudo apt install -y scrot');
+  else throw new Error('No screen capture tool and auto-install did not succeed. Install it yourself with: ' + manualHint('scrot'));
   return out;
 }
 var shotCount = 0;
-function screenshot(args, cwd) {
+function screenshot(args, cwd, onLog) {
   var a = (args || '').trim();
   var isUrl = /^https?:\/\//i.test(a) || (/^[\w.-]+\.[a-z]{2,}([\/?#]|$)/i.test(a) && a.indexOf(' ') === -1);
   shotCount++;
   var out = isUrl || !a ? path.resolve(cwd, 'stew-shot-' + shotCount + '.png') : path.resolve(cwd, a);
-  if (isUrl) pageShot(a, out); else screenShot(out);
+  if (isUrl) pageShot(a, out, onLog); else screenShot(out, onLog);
   return out;
 }
-function record(secs, file, cwd) {
+function record(secs, file, cwd, onLog) {
   secs = parseInt(secs, 10) || 10;
   var ext = process.platform === 'darwin' ? '.mov' : '.mp4';
   var out = path.resolve(cwd, file || ('stew-recording-' + Date.now() + ext));
   if (process.platform === 'darwin') { execSync('screencapture -V ' + secs + ' "' + out + '"'); return { file: out, secs: secs }; }
   if (noDisplay()) throw new Error('No display detected. Screen recording needs a desktop session — over SSH, run it on the machine directly.');
-  if (!hasTool('ffmpeg')) {
-    var inst = process.platform === 'win32' ? 'winget install ffmpeg' : (process.platform === 'darwin' ? 'brew install ffmpeg' : 'sudo apt install -y ffmpeg');
-    throw new Error('ffmpeg not found. Install it:\n  ' + inst + '\nOr let Stew do it: /run ' + inst);
-  }
+  if (!hasTool('ffmpeg')) autoInstall(['ffmpeg'], onLog);
+  if (!hasTool('ffmpeg')) throw new Error('ffmpeg not found and auto-install did not succeed. Install it yourself with: ' + manualHint('ffmpeg'));
   if (process.platform === 'win32') execSync('ffmpeg -y -f gdigrab -framerate 25 -i desktop -t ' + secs + ' "' + out + '"', { stdio: 'ignore' });
   else execSync('ffmpeg -y -f x11grab -framerate 25 -i :0.0 -t ' + secs + ' "' + out + '"', { stdio: 'ignore' });
   return { file: out, secs: secs };
 }
-module.exports = { Browsr, Jar, parseForms, browseCommand, screenshot, record, findBrowser, pageShot, screenShot, strip, decode, parseKV };
+module.exports = { Browsr, Jar, parseForms, browseCommand, screenshot, record, findBrowser, pageShot, screenShot, strip, decode, parseKV, pkgManager, installCmd, autoInstall, manualHint };

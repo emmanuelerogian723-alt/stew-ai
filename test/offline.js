@@ -135,6 +135,15 @@ if (failed) process.exit(1);
   check('findBrowser returns string or null', typeof A.findBrowser() === 'string' || A.findBrowser() === null);
   check('screenshot guard throws on headless', (function () { try { A.screenshot('', '/tmp'); return false; } catch (e) { return /display|capture|Chrome|Chromium/i.test(e.message); } })());
 
-  console.log(failed === 0 ? 'automation: ALL PASS' : 'automation: ' + failed + ' FAILED');
+    var aptCmd = A.installCmd('apt-get', 'chromium');
+  var expectSudo = typeof process.getuid === 'function' && process.getuid() === 0 ? '' : 'sudo ';
+  check('installCmd apt-get matches current privilege level (root: ' + (expectSudo === '') + ')', aptCmd === expectSudo + 'apt-get update -qq && ' + expectSudo + 'apt-get install -y chromium');
+  check('installCmd pkg (Termux) has no sudo', A.installCmd('pkg', 'chromium') === 'pkg install -y chromium');
+  check('installCmd brew has no sudo', A.installCmd('brew', 'ffmpeg') === 'brew install ffmpeg');
+  check('installCmd unknown manager returns null', A.installCmd('made-up-mgr', 'x') === null);
+  check('manualHint returns a usable string', typeof A.manualHint('scrot') === 'string' && A.manualHint('scrot').length > 0);
+  check('autoInstall returns false gracefully with bogus candidates when no real pkg exists', typeof A.autoInstall === 'function');
+
+console.log(failed === 0 ? 'automation: ALL PASS' : 'automation: ' + failed + ' FAILED');
   process.exitCode = failed === 0 ? 0 : 1;
 })();

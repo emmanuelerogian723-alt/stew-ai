@@ -806,7 +806,7 @@ async function codeCommand(args) {
       }
       case 'screenshot': case 'ss': {
         try {
-          var sf = A.screenshot(args, cwd);
+          var sf = A.screenshot(args, cwd, function (m) { console.log(C.dim + m + C.reset); });
           console.log(C.green + 'Screenshot saved → ' + sf + C.reset);
           console.log(C.dim + 'Ask about it: /image ' + sf + C.reset + '\n');
         } catch (e) { console.log(C.red + e.message + C.reset + '\n'); }
@@ -814,7 +814,7 @@ async function codeCommand(args) {
       }
       case 'record': case 'rec': {
         try {
-          var rec = A.record(parts[1], parts[2], cwd);
+          var rec = A.record(parts[1], parts[2], cwd, function (m) { console.log(C.dim + m + C.reset); });
           console.log(C.green + 'Recorded ' + rec.secs + 's → ' + rec.file + C.reset + '\n');
         } catch (e) { console.log(C.red + e.message + C.reset + '\n'); }
         break;
@@ -826,7 +826,20 @@ async function codeCommand(args) {
         try {
           var so = execSync(args, { cwd: cwd, encoding: 'utf8', timeout: 30000 });
           console.log(so || C.dim + '  (no output)' + C.reset);
-        } catch (se2) { console.log(C.red + '  ' + (se2.stdout || se2.message) + C.reset); }
+        } catch (se2) {
+          var errText = (se2.stderr ? se2.stderr.toString() : '') + (se2.stdout || '') + (se2.message || '');
+          var missing = errText.match(/(?:command not found|not found|not recognized as an internal or external command)[:\s]*([\w.-]+)?/i) || errText.match(/([\w.-]+):\s*(?:command not found|not found)/i);
+          var missingBin = missing && (missing[1] || errText.match(/^([\w.-]+):/)) ? (missing[1] || '') : '';
+          if (missingBin && A.autoInstall([missingBin], function (m) { console.log(C.dim + m + C.reset); })) {
+            try {
+              var so2 = execSync(args, { cwd: cwd, encoding: 'utf8', timeout: 30000 });
+              console.log(C.green + 'Installed ' + missingBin + ' and re-ran the command.' + C.reset);
+              console.log(so2 || C.dim + '  (no output)' + C.reset);
+            } catch (se3) { console.log(C.red + '  ' + (se3.stdout || se3.message) + C.reset); }
+          } else {
+            console.log(C.red + '  ' + (se2.stdout || se2.message) + C.reset);
+          }
+        }
         console.log('');
         break;
       }
