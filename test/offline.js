@@ -94,9 +94,14 @@ test('code.js defines all v2.6 commands', () => {
     assert.ok(src.includes(c), 'missing command ' + c);
   }
 });
-test('image mime falls back to jpeg', () => {
-  const src = require('fs').readFileSync(ROOT + '/cli/commands/code.js', 'utf8');
-  assert.ok(src.includes("['gif', 'webp'].indexOf(mime) < 0"), 'mime guard missing');
+test('image mime: png/jpeg/gif/webp preserved, jpg normalized, unknown falls back to jpeg', () => {
+  const { imageMime } = require(ROOT + '/cli/utils/files');
+  assert.strictEqual(imageMime('shot.png'), 'png', 'png screenshot must stay png, not be mislabeled as jpeg');
+  assert.strictEqual(imageMime('photo.jpg'), 'jpeg');
+  assert.strictEqual(imageMime('photo.jpeg'), 'jpeg');
+  assert.strictEqual(imageMime('anim.gif'), 'gif');
+  assert.strictEqual(imageMime('pic.webp'), 'webp');
+  assert.strictEqual(imageMime('scan.bmp'), 'jpeg', 'truly unsupported ext falls back to jpeg guess');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

@@ -8,6 +8,12 @@ const MAX_FILES_LIST = 500;
 const BINARY_EXTS = new Set([
 '.png','.jpg','.jpeg','.gif','.bmp','.ico','.webp','.svg','.pdf','.doc','.docx','.xls','.xlsx','.ppt','.pptx','.zip','.gz','.tar','.rar','.7z','.deb','.dmg','.iso','.exe','.dll','.so','.dylib','.bin','.dat','.mp3','.mp4','.avi','.mov','.wav','.flac','.ogg','.webm','.woff','.woff2','.ttf','.eot','.otf','.pyc','.pyo','.class','.o','.a','.lib','.node','.wasm',
 ]);
+function imageMime(filePath) {
+  var ext = require('path').extname(filePath).slice(1).toLowerCase();
+  if (ext === 'jpg') ext = 'jpeg';
+  if (['png', 'jpeg', 'gif', 'webp'].indexOf(ext) < 0) ext = 'jpeg'; // unknown/no extension: best-effort guess only
+  return ext;
+}
 function isBinary(filepath) {
   const ext = path.extname(filepath).toLowerCase();
   return BINARY_EXTS.has(ext);
@@ -330,4 +336,4 @@ function currentBranch(dir = '.') {
   return result.ok ? result.output : 'unknown';
 }
 
-module.exports = { readFileSync, isBinary, listFiles, globMatch, projectContext, buildTree, diff, UndoStack, MAX_FILE_SIZE, saveSession, loadSession, listSessions, deleteSession, sessionDir, gitExec, isGitRepo, status, log, commit, addAll, currentBranch };
+module.exports = { readFileSync, isBinary, listFiles, globMatch, projectContext, buildTree, diff, UndoStack, MAX_FILE_SIZE, saveSession, loadSession, listSessions, deleteSession, sessionDir, gitExec, isGitRepo, status, log, commit, addAll, currentBranch, imageMime };

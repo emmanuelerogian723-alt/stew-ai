@@ -858,8 +858,7 @@ async function codeCommand(args) {
         var resolvedImg = path.resolve(cwd, imgFile);
         if (!fs.existsSync(resolvedImg)) { console.log(C.red + '  not found: ' + imgFile + C.reset + '\n'); break; }
         var imgQ = parts.slice(2).join(' ') || 'Describe this image in detail.';
-        var mime = path.extname(resolvedImg).slice(1).toLowerCase();
-        if (['gif', 'webp'].indexOf(mime) < 0) mime = 'jpeg';
+        var mime = git.imageMime(resolvedImg);
         var imgB64 = fs.readFileSync(resolvedImg).toString('base64');
         console.log(C.dim + '  analyzing image...' + C.reset);
         process.stdout.write(C.green + C.bold + 'stew' + C.reset + ' ' + C.dim + '>' + C.reset + ' ');
