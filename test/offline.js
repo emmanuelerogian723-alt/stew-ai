@@ -58,11 +58,15 @@ test('scraper extractors on sample HTML', () => {
 });
 test('skill-forge: builtin skills + forge/delete custom skill', () => {
   const sf = require(ROOT + '/cli/utils/skill-forge');
-  assert.ok(sf.listSkills().builtins.length >= 10);
+  var sk = sf.listSkills();
+  assert.ok(sk.builtins.length >= 10);
+  assert.ok(sk.builtins.every(function (s) { return typeof s.name === 'string' && typeof s.description === 'string'; }), 'builtins must be {name, description} objects — this is what /help and /skills render');
   sf.forgeSkill('t-skill', 'test skill', 'echo hi');
-  assert.ok(sf.listSkills().custom.includes('t-skill'));
+  var withCustom = sf.listSkills();
+  assert.ok(withCustom.custom.some(function (s) { return s.name === 't-skill'; }));
+  assert.ok(withCustom.custom.every(function (s) { return typeof s.name === 'string' && typeof s.description === 'string'; }));
   sf.deleteSkill('t-skill');
-  assert.ok(!sf.listSkills().custom.includes('t-skill'));
+  assert.ok(!sf.listSkills().custom.some(function (s) { return s.name === 't-skill'; }));
 });
 test('mcp config add/list/remove', () => {
   const mcp = require(ROOT + '/cli/utils/mcp');

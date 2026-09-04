@@ -220,10 +220,18 @@ const BUILTIN_SKILLS = {
 };
 
 function listSkills() {
-  var builtins = Object.keys(BUILTIN_SKILLS);
+  var builtins = Object.keys(BUILTIN_SKILLS).map(function (k) {
+    return { name: k, description: BUILTIN_SKILLS[k].description || '' };
+  });
   var custom = [];
-  if (fs.existsSync(SKILLS_DIR)) { custom = fs.readdirSync(SKILLS_DIR).filter(f => f.endsWith('.js')).map(f => f.replace('.js', '')); }
-  return { builtins, custom, total: builtins.length + custom.length };
+  if (fs.existsSync(SKILLS_DIR)) {
+    custom = fs.readdirSync(SKILLS_DIR).filter(function (f) { return f.endsWith('.js'); }).map(function (f) {
+      var name = f.replace('.js', ''), description = 'Custom skill';
+      try { var mod = require(path.join(SKILLS_DIR, f)); if (mod && mod.description) description = mod.description; } catch (e) {}
+      return { name: name, description: description };
+    });
+  }
+  return { builtins: builtins, custom: custom, total: builtins.length + custom.length };
 }
 
 function runSkill(name, args, cwd) {

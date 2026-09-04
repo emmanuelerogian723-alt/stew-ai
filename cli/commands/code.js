@@ -360,7 +360,7 @@ async function codeCommand(args) {
         }
         console.log('\n' + C.bold + 'Built-in Skills:' + C.reset);
         var skills = listSkills();
-        skills.builtin.forEach(function(s) {
+        skills.builtins.forEach(function(s) {
           console.log('  ' + C.magenta + ('/skill ' + s.name).padEnd(24) + C.reset + C.dim + s.description + C.reset);
         });
         console.log('');
@@ -444,8 +444,8 @@ async function codeCommand(args) {
       case 'skills': case 'skill-list':
         var sl = listSkills();
         console.log('\n' + C.bold + 'Stew Code Skills (' + sl.total + ' total)' + C.reset + '\n');
-        console.log(C.bold + 'Built-in (' + sl.builtin.length + '):' + C.reset);
-        sl.builtin.forEach(function(s) {
+        console.log(C.bold + 'Built-in (' + sl.builtins.length + '):' + C.reset);
+        sl.builtins.forEach(function(s) {
           console.log('  ' + C.magenta + s.name.padEnd(14) + C.reset + C.dim + s.description + C.reset);
         });
         if (sl.custom.length > 0) {
