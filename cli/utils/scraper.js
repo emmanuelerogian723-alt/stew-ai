@@ -1,4 +1,5 @@
 var C = require('./output').C;
+var describeFetchError = require('../../lib/api').describeFetchError;
 var MAX_CONTENT_LENGTH = 50000;
 var DEFAULT_TIMEOUT = 15000;
 var DEFAULT_USER_AGENT = 'Mozilla/5.0 (compatible; StewCode/2.1; +https://stew-agent.onrender.com)';
@@ -31,7 +32,7 @@ async function fetchUrl(url, options) {
     if (err.name === 'AbortError') {
       return { ok: false, status: 0, error: 'Request timed out after ' + timeout + 'ms', url: url };
     }
-    return { ok: false, status: 0, error: err.message, url: url };
+    return { ok: false, status: 0, error: describeFetchError(err), url: url };
   } finally {
     clearTimeout(timer);
   }

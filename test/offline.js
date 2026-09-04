@@ -103,7 +103,7 @@ console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);
 
 // ── v2.7.0: automation module (browse engine, screenshots, record) ──
-(function () {
+(async function () {
   var A = require('../cli/utils/automation');
   var failed = 0;
 
@@ -144,6 +144,37 @@ if (failed) process.exit(1);
   check('manualHint returns a usable string', typeof A.manualHint('scrot') === 'string' && A.manualHint('scrot').length > 0);
   check('autoInstall returns false gracefully with bogus candidates when no real pkg exists', typeof A.autoInstall === 'function');
 
+  check('describeFetchError surfaces DNS cause instead of generic "fetch failed"', (function () {
+    var api = require(ROOT + '/lib/api');
+    var fakeErr = new Error('fetch failed');
+    fakeErr.cause = { code: 'ENOTFOUND', message: 'getaddrinfo ENOTFOUND example.invalid' };
+    var msg = api.describeFetchError(fakeErr);
+    return msg.indexOf('ENOTFOUND') !== -1 && msg.indexOf('DNS') !== -1 && msg !== 'fetch failed';
+  })());
+  check('describeFetchError gives cert hint for missing CA certs (common in Termux/proot)', (function () {
+    var api = require(ROOT + '/lib/api');
+    var fakeErr = new Error('fetch failed');
+    fakeErr.cause = { code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' };
+    return api.describeFetchError(fakeErr).indexOf('ca-certificates') !== -1;
+  })());
+  check('describeFetchError falls back gracefully with no cause', (function () {
+    var api = require(ROOT + '/lib/api');
+    return api.describeFetchError(new Error('fetch failed')) === 'fetch failed';
+  })());
+
+  var writeTestPassed = await (async function () {
+    var ae = require(ROOT + '/cli/utils/agent-engine');
+    var fs2 = require('fs');
+    var os2 = require('os');
+    var pth2 = require('path');
+    var tmp = fs2.mkdtempSync(pth2.join(os2.tmpdir(), 'stew-write-test-'));
+    var prior = [{ step: 'analyze', action: 'analyze', ok: true, output: 'REAL SUMMARY CONTENT' }];
+    var r = await ae.executeStep(null, { action: 'write', target: pth2.join(tmp, 'out.txt'), code: '' }, tmp, prior);
+    var written = fs2.readFileSync(pth2.join(tmp, 'out.txt'), 'utf8');
+    return r.ok && written === 'REAL SUMMARY CONTENT';
+  })();
+  check('agent-engine: write step with empty code falls back to prior analyze output (not left empty)', writeTestPassed);
+
 console.log(failed === 0 ? 'automation: ALL PASS' : 'automation: ' + failed + ' FAILED');
   process.exitCode = failed === 0 ? 0 : 1;
-})();
+})().catch(function (e) { console.log('automation: CRASHED — ' + e.message); process.exitCode = 1; });

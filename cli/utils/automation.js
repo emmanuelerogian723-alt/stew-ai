@@ -1,4 +1,5 @@
 var S = require('./scraper');
+var describeFetchError = require('../../lib/api').describeFetchError;
 var { execSync } = require('child_process');
 var fs = require('fs');
 var path = require('path');
@@ -71,7 +72,12 @@ Browsr.prototype._fetch = async function (url, opts) {
   headers['user-agent'] = headers['user-agent'] || 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 StewCode/2.7';
   var ck = this.jar.header(url);
   if (ck) headers['cookie'] = (headers['cookie'] ? headers['cookie'] + '; ' : '') + ck;
-  var res = await fetch(url, { method: opts.method || 'GET', headers: headers, body: opts.body, redirect: 'follow' });
+  var res;
+  try {
+    res = await fetch(url, { method: opts.method || 'GET', headers: headers, body: opts.body, redirect: 'follow' });
+  } catch (fe) {
+    throw new Error(describeFetchError(fe));
+  }
   var sc = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];
   if (sc.length) this.jar.store(url, sc);
   this.status = res.status;

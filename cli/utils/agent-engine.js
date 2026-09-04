@@ -19,6 +19,11 @@ async function planSteps(client, goal, cwd) {
   planPrompt += '- description: what this step does\n';
   planPrompt += '- target: file path | command | query | skill name\n';
   planPrompt += '- code: file content (for write only)\n\n';
+  planPrompt += 'IMPORTANT about "search" vs "scrape":\n';
+  planPrompt += '- "search" already performs a real web search and its full text output (titles, snippets, source URLs) is automatically passed as context into every later step (analyze/write can read and cite it directly). Use "search" alone for ANY "find/research information about X" need — do NOT add follow-up steps just to fetch the URLs it finds.\n';
+  planPrompt += '- "scrape" fetches ONE specific, already-known destination URL (e.g. a company site, GitHub repo, docs page) supplied literally in "target". It CANNOT search, and it CANNOT reference another step\'s output.\n';
+  planPrompt += '- NEVER target a search engine results page with "scrape" (google.com/search, bing.com/search, duckduckgo.com/html — these block/reset automated requests and always fail).\n';
+  planPrompt += '- Every "target" value must be a concrete literal (a real URL, real file path, real command, real query) written out in full. NEVER use placeholder/template syntax like {{step.output}} or [0] indexing — steps cannot read structured data from each other, only raw text, and there is no template engine to resolve them. If a later step needs an earlier result, rely on the automatic text context, do not reference it as a variable.\n\n';
   planPrompt += '3-8 steps. Return ONLY the JSON array.';
   var result = await streamChatCompletion(client, [
     { role: 'system', content: 'You are a task planning AI. Return only valid JSON arrays.' },
@@ -54,9 +59,21 @@ async function executeStep(client, step, cwd, messages) {
       var resolved = path.resolve(cwd, target);
       var dir = path.dirname(resolved);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(resolved, step.code || '');
+      var content = step.code;
+      if (!content || !content.trim()) {
+        // The plan is generated upfront, before "analyze"/"search" steps have real results —
+        // so a static step.code for something like "write the summary to a file" is always empty/guessed.
+        // Fall back to the most recent successful analyze/search output so the file has real content.
+        var prior = null;
+        for (var pi = (messages || []).length - 1; pi >= 0; pi--) {
+          var m = messages[pi];
+          if (m.ok && (m.action === 'analyze' || m.action === 'search') && m.output && m.output.trim()) { prior = m; break; }
+        }
+        content = prior ? prior.output : '';
+      }
+      fs.writeFileSync(resolved, content || '');
       console.log(' ' + C.green + 'WRITTEN' + C.reset);
-      return { ok: true, output: 'Wrote ' + target };
+      return { ok: true, output: content && content.trim() ? 'Wrote ' + target + ' (' + content.length + ' bytes)' : 'Wrote ' + target + ' — WARNING: no content available, file is empty' };
     }
     case 'shell': {
       try {
