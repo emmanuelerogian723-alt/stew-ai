@@ -11,6 +11,7 @@ const { BUILTIN_SKILLS, listSkills, runSkill, forgeSkill, deleteSkill } = requir
 const mascot = require('../utils/mascot');
 const adv = require('../utils/advanced');
 const mcp = require('../utils/mcp');
+const A = require('../utils/automation');
 const { scrape } = require('../utils/scraper');
 const PKG = require('../../package.json');
 
@@ -60,6 +61,9 @@ var SLASH_COMMANDS = [
   ['/image <path> [q]', 'Vision'],
   ['/mcp <sub>', 'MCP'],
   ['/sh <cmd>', 'Guarded shell'],
+  ['/browse <sub>', 'Web automation'],
+  ['/screenshot [url]', 'Page/screen shot'],
+  ['/record <secs>', 'Screen recording'],
   ['/fix', 'Autofix'],
   ['/test', 'Tests+fix'],
   ['/doc', 'Gen README'],
@@ -796,6 +800,25 @@ async function codeCommand(args) {
         break;
       }
 
+      case 'browse': {
+        await A.browseCommand(parts[1], parts.slice(2).join(' '), C, cwd, function (c) { state.messages.push({ role: 'user', content: c }); });
+        break;
+      }
+      case 'screenshot': case 'ss': {
+        try {
+          var sf = A.screenshot(args, cwd);
+          console.log(C.green + 'Screenshot saved → ' + sf + C.reset);
+          console.log(C.dim + 'Ask about it: /image ' + sf + C.reset + '\n');
+        } catch (e) { console.log(C.red + e.message + C.reset + '\n'); }
+        break;
+      }
+      case 'record': case 'rec': {
+        try {
+          var rec = A.record(parts[1], parts[2], cwd);
+          console.log(C.green + 'Recorded ' + rec.secs + 's → ' + rec.file + C.reset + '\n');
+        } catch (e) { console.log(C.red + e.message + C.reset + '\n'); }
+        break;
+      }
       case 'sh': case 'shell': {
         if (!args) { console.log(C.yellow + '  /sh <command>' + C.reset + '\n'); break; }
         var danger = new RegExp('rm\\s+-rf\\s+\\/|sudo|dd\\s+if=|mk' + 'fs|:\\(\\)\\s*\\{');

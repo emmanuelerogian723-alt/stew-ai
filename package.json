@@ -1,13 +1,15 @@
 {
   "name": "stew-ai",
-  "version": "2.6.2",
+  "version": "2.7.0",
   "description": "Stew Code \u2014 Terminal coding agent. Security Scanner, Self-Verify, Endurance Mode, Skill Forge, Dev Environment Setup, 16+ skills. Zero deps.",
   "main": "index.js",
   "bin": {
     "stew": "cli/index.js"
   },
   "scripts": {
-    "test": "node -e \"const S=require('./index.js'); console.log('Stew Code loaded:', Object.keys(new S({apiKey:'test'})))\""
+    "test": "node -e \"const S=require('./index.js'); console.log('Stew Code loaded:', Object.keys(new S({apiKey:'test'})))\"",
+    "build": "node minify.js",
+    "prepublishOnly": "node minify.js"
   },
   "engines": {
     "node": ">=18"
@@ -41,5 +43,8 @@
     "lib/",
     "cli/",
     "README.md"
-  ]
+  ],
+  "devDependencies": {
+    "terser": "^5.51.2"
+  }
 }

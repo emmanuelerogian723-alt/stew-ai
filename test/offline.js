@@ -96,4 +96,41 @@ test('image mime falls back to jpeg', () => {
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
-process.exit(failed ? 1 : 0);
+if (failed) process.exit(1);
+
+// ── v2.7.0: automation module (browse engine, screenshots, record) ──
+(function () {
+  var A = require('../cli/utils/automation');
+  var failed = 0;
+
+  function check(name, cond) {
+    if (cond) console.log('  ✓ ' + name);
+    else { console.log('  ✗ ' + name); failed++; }
+  }
+
+  var j = new A.Jar();
+  j.store('https://example.com/', ['sid=abc; Path=/', 'tok=xyz']);
+  check('cookie jar stores + sends', j.header('https://example.com/x') === 'sid=abc; tok=xyz');
+  j.store('https://example.com/', ['sid=; Path=/']);
+  check('cookie jar deletes empty values', j.header('https://example.com/x') === 'tok=xyz');
+
+  var forms = A.parseForms('<form action="/login" method="post"><input name="u" value="bob"><input type="password" name="p"><input type="submit" name="go"></form><form><select name="c"><option value="1">One</option><option value="2" selected>Two</option></select></form>', 'https://x.com/');
+  check('parseForms finds 2 forms', forms.length === 2);
+  check('parseForms skips submit inputs', forms[0].fields.length === 2 && forms[0].fields[0].value === 'bob');
+  check('parseForms reads selected option', forms[1].fields[0].value === '2');
+  check('parseForms resolves action URL', forms[0].action === 'https://x.com/login');
+
+  var unq = A.parseForms('<form><input name=a value=1></form>', 'https://x.com/');
+  check('parseForms handles unquoted attrs', unq[0].fields[0].value === '1');
+
+  var kv = A.parseKV('user="John Doe" pass=secret');
+  check('parseKV parses quoted + bare values', kv.user === 'John Doe' && kv.pass === 'secret');
+
+  check('strip/decode HTML entities', A.strip('<p>A &amp; B</p>') === 'A & B');
+
+  check('findBrowser returns string or null', typeof A.findBrowser() === 'string' || A.findBrowser() === null);
+  check('screenshot guard throws on headless', (function () { try { A.screenshot('', '/tmp'); return false; } catch (e) { return /display|capture|Chrome|Chromium/i.test(e.message); } })());
+
+  console.log(failed === 0 ? 'automation: ALL PASS' : 'automation: ' + failed + ' FAILED');
+  process.exitCode = failed === 0 ? 0 : 1;
+})();
