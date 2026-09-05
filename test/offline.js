@@ -180,6 +180,52 @@ if (failed) process.exit(1);
   })();
   check('agent-engine: write step with empty code falls back to prior analyze output (not left empty)', writeTestPassed);
 
-console.log(failed === 0 ? 'automation: ALL PASS' : 'automation: ' + failed + ' FAILED');
+
+  // --- auth fixes regression tests (v2.7.6) ---
+  check('auth: whoamiCommand no longer throws ReferenceError (apiKey scoped)', (function () {
+    var auth = require(ROOT + '/cli/commands/auth');
+    // whoamiCommand reads the key itself; calling it with no key must not throw
+    var os3 = require('os'), fs3 = require('fs'), pth3 = require('path');
+    var cfgDir = pth3.join(os3.homedir(), '.stew');
+    var cfgFile = pth3.join(cfgDir, 'config.json');
+    if (fs3.existsSync(cfgFile)) { fs3.renameSync(cfgFile, cfgFile + '.bak'); try { auth.authCommand({ _: ['whoami'], options: {} }, 'auth'); return true; } finally { fs3.renameSync(cfgFile + '.bak', cfgFile); } }
+    auth.authCommand({ _: ['whoami'], options: {} }, 'auth');
+    return true;
+  })());
+  check('auth: direct alias routing — "stew login <key>" passes key, not action', (function () {
+    var auth = require(ROOT + '/cli/commands/auth');
+    var fs4 = require('fs'), os4 = require('os'), pth4 = require('path');
+    var cf4 = pth4.join(os4.homedir(), '.stew', 'config.json');
+    var backup4 = fs4.existsSync(cf4) ? fs4.readFileSync(cf4, 'utf8') : null;
+    auth.authCommand({ _: ['stew_test_key_123'], options: {} }, 'login'); // simulates: stew login stew_test_key_123
+    var saved = JSON.parse(fs4.readFileSync(cf4, 'utf8')).apiKey;
+    // restore prior config; if none existed (an earlier test may have cleared it), delete so no stale test key survives
+    if (backup4 !== null) fs4.writeFileSync(cf4, backup4);
+    else { try { fs4.unlinkSync(cf4); } catch (e) {} }
+    return saved === 'stew_test_key_123';
+  })());
+  check('SDK: register() sends "name" field (backend contract), not full_name', (function () {
+    var Stew = require(ROOT + '/index.js');
+    var sent = null;
+    var stub = new Stew({ apiKey: 'x' });
+    stub.client.post = function (path, body) { sent = { path: path, body: body }; return Promise.resolve({ success: true }); };
+    stub.register('A B', 'a@b.c', 'pw');
+    return sent && sent.path === '/auth/register' && sent.body.name === 'A B' && sent.body.full_name === undefined;
+  })());
+  check('SDK: usage() passes api_key as query param (backend contract)', (function () {
+    var Stew = require(ROOT + '/index.js');
+    var got = null;
+    var stub = new Stew({ apiKey: 'stew_key_abc' });
+    stub.client.get = function (path) { got = path; return Promise.resolve({}); };
+    stub.usage();
+    return got === '/auth/usage?api_key=stew_key_abc';
+  })());
+  check('StewError: FastAPI 422 detail array becomes readable message', (function () {
+    var api = require(ROOT + '/lib/api');
+    var e = api.StewError.fromResponse(422, { detail: [{ type: 'missing', loc: ['body', 'name'], msg: 'Field required' }] });
+    return e.message.indexOf('name') !== -1 && e.message !== '[object Object]';
+  })());
+
+  console.log(failed === 0 ? 'automation: ALL PASS' : 'automation: ' + failed + ' FAILED');
   process.exitCode = failed === 0 ? 0 : 1;
 })().catch(function (e) { console.log('automation: CRASHED — ' + e.message); process.exitCode = 1; });
