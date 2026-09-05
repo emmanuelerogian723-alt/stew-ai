@@ -1,7 +1,7 @@
 {
   "name": "stew-ai",
-  "version": "2.7.4",
-  "description": "Stew Code \u2014 Terminal coding agent. Security Scanner, Self-Verify, Endurance Mode, Skill Forge, Dev Environment Setup, 16+ skills. Zero deps.",
+  "version": "2.7.5",
+  "description": "Stew Code — Terminal coding agent. Security Scanner, Self-Verify, Endurance Mode, Skill Forge, Dev Environment Setup, 16+ skills. Zero deps.",
   "main": "index.js",
   "bin": {
     "stew": "cli/index.js"
