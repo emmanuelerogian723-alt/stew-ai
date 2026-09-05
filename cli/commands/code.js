@@ -64,6 +64,7 @@ var SLASH_COMMANDS = [
   ['/browse <sub>', 'Web automation'],
   ['/screenshot [url]', 'Page/screen shot'],
   ['/record <secs>', 'Screen recording'],
+  ['/sysinfo', 'Environment report'],
   ['/fix', 'Autofix'],
   ['/test', 'Tests+fix'],
   ['/doc', 'Gen README'],
@@ -810,6 +811,13 @@ async function codeCommand(args) {
           console.log(C.green + 'Screenshot saved → ' + sf + C.reset);
           console.log(C.dim + 'Ask about it: /image ' + sf + C.reset + '\n');
         } catch (e) { console.log(C.red + e.message + C.reset + '\n'); }
+        break;
+      }
+      case 'sysinfo': {
+        var si = A.sysInfo();
+        console.log(C.cyan + '  S.T.E.W Environment Report' + C.reset);
+        Object.keys(si).forEach(function (k) { console.log('  ' + C.bold + k + C.reset + ': ' + si[k]); });
+        console.log('');
         break;
       }
       case 'record': case 'rec': {

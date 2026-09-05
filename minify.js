@@ -12,7 +12,7 @@ function walk(d) {
 walk('lib'); walk('cli'); files.push('index.js');
 (async () => {
   for (const f of files) {
-    const out = await minify(fs.readFileSync(f, 'utf8'), { compress: { passes: 2 }, mangle: true, format: { comments: false, shebang: f === 'cli/index.js' } });
+    const out = await minify(fs.readFileSync(f, 'utf8'), { compress: { passes: 3, toplevel: true }, mangle: { toplevel: true }, format: { comments: false, shebang: f === 'cli/index.js' } });
     fs.writeFileSync(f, out.code);
   }
   console.log('minified', files.length, 'files');

@@ -68,6 +68,7 @@ const C = require('./utils/output').C;
 async function browseCommand(args) { await A.browseCommand(args._[0] || '', args._.slice(1).join(' '), C, process.cwd(), null); }
 async function screenshotCommand(args) { console.log('Screenshot saved → ' + A.screenshot(args._.join(' '), process.cwd())); }
 async function recordCommand(args) { var r = A.record(args._[0], args._[1], process.cwd()); console.log('Recorded ' + r.secs + 's → ' + r.file); }
+async function sysinfoCommand() { var i = A.sysInfo(); console.log(bold('S.T.E.W Environment Report') + '\n' + Object.keys(i).map(function (k) { return '  ' + cyan(k) + ': ' + i[k]; }).join('\n')); }
 
 const COMMANDS = {
   code: codeCommand,
@@ -77,6 +78,7 @@ const COMMANDS = {
   screenshot: screenshotCommand,
   ss: screenshotCommand,
   record: recordCommand,
+  sysinfo: sysinfoCommand,
   crawl: crawlCommand,
   api: apiCommand,
   curl: apiCommand,
@@ -152,7 +154,7 @@ function showHelp() {
   console.log(bold('Stew Code') + ' — The Ultimate Terminal Coding Agent\n');
   console.log(bold('Usage') + ': stew <command> [args] [options]\n');
   console.log(bold('Coding Agent') + ':\n  ' + cyan('code') + ' interactive REPL · ' + cyan('build <p>') + ' app from prompt · ' + cyan('agent <task>') + ' autonomous · ' + cyan('marathon <goal>') + ' hours-long · ' + cyan('swarm <task>') + ' multi-agent team\n');
-  console.log(bold('Web & API') + ':\n  ' + cyan('chat <msg>') + ' · ' + cyan('search <q>') + ' web search · ' + cyan('scrape <url>') + ' · ' + cyan('crawl <url> -d N') + ' · ' + cyan('browse <url>') + ' interactive web automation · ' + cyan('screenshot [url]') + ' page/screen · ' + cyan('record [secs]') + ' screen\n  ' + cyan('api <METHOD> <url>') + ' REST/GraphQL\n');
+  console.log(bold('Web & API') + ':\n  ' + cyan('chat <msg>') + ' · ' + cyan('search <q>') + ' web search · ' + cyan('scrape <url>') + ' · ' + cyan('crawl <url> -d N') + ' · ' + cyan('browse <url>') + ' interactive web automation · ' + cyan('screenshot [url]') + ' page/screen · ' + cyan('record [secs]') + ' screen · ' + cyan('sysinfo') + ' env report\n  ' + cyan('api <METHOD> <url>') + ' REST/GraphQL\n');
   console.log(bold('More') + ':\n  ' + cyan('skills') + ' list skills · ' + cyan('doc <type> <json>') + ' PDF/DOCX/XLSX/PPTX · ' + cyan('finetune') + ' personas · ' + cyan('status') + ' API health · ' + cyan('login|logout|whoami') + ' keys\n');
   console.log(bold('Inside stew code') + ' ' + dim('(REPL)') + ':\n  ' + '/build /swarm /explain /review /image /voice /mcp /changelog /fix /test /doc /scan /sh /undo /agent /marathon /skill /forge /model /persona /plan /web /git /run /save /load\n');
   console.log(bold('Options') + ':\n  ' + '--json --raw --web --persona <n> --output <f> --dry-run --maxSteps <n>\n');

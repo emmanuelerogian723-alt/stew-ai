@@ -238,6 +238,49 @@ function manualHint(pkg) {
   var cmd = mgr ? installCmd(mgr, pkg) : null;
   return cmd || ('install "' + pkg + '" using your system package manager');
 }
+// Rough download size hints (MB, incl. typical deps) for the heavy packages we auto-install.
+var PKG_MB = { chromium: 250, 'chromium-browser': 250, 'google-chrome': 300, ffmpeg: 80, 'gnome-screenshot': 15, imagemagick: 25, tesseract: 40 };
+function freeMB() {
+  try { var row = execSync('df -m . 2>/dev/null').toString().split('\n')[1].split(/\s+/); return parseInt(row[3], 10) || 0; } catch (e) { return 0; }
+}
+function battery() {
+  if (isTermux()) { try { var j = JSON.parse(execSync('termux-battery-status 2>/dev/null').toString()); return { pct: j.percentage, charging: j.status === 'CHARGING' }; } catch (e) { return null; } }
+  try {
+    var dirs = fs.readdirSync('/sys/class/power_supply');
+    for (var i = 0; i < dirs.length; i++) {
+      var base = '/sys/class/power_supply/' + dirs[i] + '/';
+      if (fs.existsSync(base + 'capacity')) {
+        var pct = parseInt(fs.readFileSync(base + 'capacity', 'utf8').trim(), 10);
+        if (!isNaN(pct)) { var st = ''; try { st = fs.readFileSync(base + 'status', 'utf8').trim(); } catch (e) {} return { pct: pct, charging: st === 'Charging' }; }
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+// Warns BEFORE a long install: expected size, low disk, low battery. Runs quietly if no onLog.
+function preInstallWarn(pkg, onLog) {
+  if (!onLog) return;
+  var mb = PKG_MB[pkg];
+  if (mb) onLog('Heads up: ' + pkg + ' downloads ~' + mb + 'MB+ with dependencies — this can take minutes on a slow connection (not stuck, just slow).');
+  var free = freeMB();
+  if (free && free < 500) onLog('WARNING: only ' + free + 'MB free — install may fail partway. Free up space first.');
+  var b = battery();
+  if (b && b.pct < 25 && !b.charging) onLog('WARNING: battery ' + b.pct + '% and not charging — plug in first; power loss mid-install can corrupt the package.');
+}
+// Environment report — `stew sysinfo` prints this so users can paste it when reporting issues.
+function sysInfo() {
+  var mgr = pkgManager();
+  var b = battery();
+  var free = freeMB();
+  return {
+    platform: process.platform, arch: process.arch, node: process.version,
+    termux: isTermux(), root: isRoot(), packageManager: mgr || 'none',
+    browser: findBrowser() || 'none', display: !noDisplay(),
+    freeDiskMB: free || 'unknown', battery: b ? (String(b.pct) + '%' + (b.charging ? ' (charging)' : '')) : 'unknown/desktop',
+    network: netUp()
+  };
+}
+function netUp() { if (!hasTool('curl')) return 'unknown (no curl)'; try { execSync('curl -s -m 5 -o /dev/null https://registry.npmjs.org'); return true; } catch (e) { return false; } }
 // Tries each candidate package name with the detected manager until one installs successfully.
 // Reports progress via onLog since installs can take a while — never do this silently.
 function autoInstall(candidates, onLog) {
@@ -247,6 +290,7 @@ function autoInstall(candidates, onLog) {
     var cmd = installCmd(mgr, candidates[i]);
     if (!cmd) continue;
     try {
+      preInstallWarn(candidates[i], onLog);
       if (onLog) onLog('Installing ' + candidates[i] + ' via ' + mgr + '... (this can take a minute)');
       execSync(cmd, { stdio: 'ignore', timeout: 240000 });
       return true;
@@ -260,7 +304,7 @@ function pageShot(url, out, onLog) {
     var candidates = isTermux() ? ['chromium'] : (process.platform === 'darwin' ? ['chromium'] : ['chromium', 'chromium-browser']);
     if (autoInstall(candidates, onLog)) bin = findBrowser();
   }
-  if (!bin) throw new Error('No Chrome/Chromium found and auto-install did not succeed (no network, no permissions, or no package manager). Install it yourself with: ' + manualHint('chromium'));
+  if (!bin) throw new Error('No Chrome/Chromium found and auto-install failed (network/permissions/package manager). Install manually: ' + manualHint('chromium'));
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
   var sandboxFlag = isRoot() ? ' --no-sandbox' : '';
   execSync('"' + bin + '" --headless=new --disable-gpu' + sandboxFlag + ' --hide-scrollbars --window-size=1280,800 --virtual-time-budget=8000 --screenshot="' + out + '" "' + url + '"', { timeout: 60000, stdio: 'ignore' });
@@ -268,7 +312,7 @@ function pageShot(url, out, onLog) {
 }
 function noDisplay() { return process.platform !== 'win32' && process.platform !== 'darwin' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY; }
 function screenShot(out, onLog) {
-  if (noDisplay()) throw new Error('No display detected. Screen capture needs a desktop session — over SSH, run it on the machine directly.');
+  if (noDisplay()) throw new Error('No display detected — screen capture needs a desktop session (not over SSH).');
   if (process.platform === 'darwin') { execSync('screencapture -x "' + out + '"'); return out; }
   if (process.platform === 'win32') {
     var ps = "Add-Type -AssemblyName System.Windows.Forms,System.Drawing;$b=[Windows.Forms.Screen]::PrimaryScreen.Bounds;$bmp=New-Object Drawing.Bitmap $b.Width,$b.Height;$g=[Drawing.Graphics]::FromImage($bmp);$g.CopyFromScreen($b.Location,[Drawing.Point]::Empty,$b.Size);$g.Dispose();$bmp.Save('" + out.replace(/'/g, "''") + "');";
@@ -307,4 +351,4 @@ function record(secs, file, cwd, onLog) {
   else execSync('ffmpeg -y -f x11grab -framerate 25 -i :0.0 -t ' + secs + ' "' + out + '"', { stdio: 'ignore' });
   return { file: out, secs: secs };
 }
-module.exports = { Browsr, Jar, parseForms, browseCommand, screenshot, record, findBrowser, pageShot, screenShot, strip, decode, parseKV, pkgManager, installCmd, autoInstall, manualHint };
+module.exports = { Browsr, Jar, parseForms, browseCommand, screenshot, record, findBrowser, pageShot, screenShot, strip, decode, parseKV, pkgManager, installCmd, autoInstall, manualHint, preInstallWarn, sysInfo };
